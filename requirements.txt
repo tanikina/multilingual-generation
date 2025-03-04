@@ -1,0 +1,10 @@
+torch==2.1.2
+transformers==4.43.0
+auto-gptq==0.7.1
+accelerate
+optimum
+numpy
+pandas
+jsonlines
+lark
+tqdm

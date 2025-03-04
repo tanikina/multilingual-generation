@@ -1,0 +1,61 @@
+intent,description
+alarm_query,asking whether there is an alarm set for a specific date or time
+alarm_remove,asking to remove an alarm for a specific date or time
+alarm_set,setting an alarm for a specific date or time
+audio_volume_down,asking to turn the audio volume down
+audio_volume_mute,asking to mute the audio volume
+audio_volume_other,asking to change the audio volume
+audio_volume_up,asking to turn the audio volume up
+calendar_query,asking about calendar events
+calendar_remove,asking to remove an event from the calendar
+calendar_set,asking to put an event in the calendar
+cooking_query,asking questions related to cooking
+cooking_recipe,asking for a cooking recipe
+datetime_convert,asking to convert date or time to a different format
+datetime_query,asking about a date or time
+email_addcontact,asking to add a new email contact
+email_query,asking about emails
+email_querycontact,asking about specific email address to contact
+email_sendemail,asking to send (or not send) an email
+general_greet,general greeting
+general_joke,asking to tell a joke
+general_quirky,asking to be quirky and provoking to behave in a quirky way
+iot_cleaning,asking to clean using devices connected via internet-of-things
+iot_coffee,asking to make coffee using devices connected via internet-of-things
+iot_hue_lightchange,asking to change lights using devices connected via internet-of-things
+iot_hue_lightdim,asking to dim lights using devices connected via internet-of-things
+iot_hue_lightoff,asking to turn off lights using devices connected via internet-of-things
+iot_hue_lighton,asking to turn on lights using devices connected via internet-of-things
+iot_hue_lightup,asking to increase brightness using devices connected via internet-of-things
+iot_wemo_off,asking to turn the wemo switch (internet-of-things) off
+iot_wemo_on,asking to turn the wemo switch (internet-of-things) on
+lists_createoradd,asking to create a new list of tasks or things to do or add something to an existing list
+lists_query,asking about the items on the list
+lists_remove,asking to remove items from the list
+music_dislikeness,disliking some music
+music_likeness,liking some music
+music_query,asking about some music composition
+music_settings,asking to change the music settings
+news_query,asking about news
+play_audiobook,asking to play an audiobook
+play_game,asking to play a game
+play_music,asking to play music
+play_podcasts,asking to play a podcast
+play_radio,asking to play radio
+qa_currency,asking about currency rates and trends
+qa_definition,asking about the definition of something
+qa_factoid,asking a factoid question
+qa_maths,asking about mathematical problems and other math-related questions
+qa_stock,asking about the stocks
+recommendation_events,asking about events to attend (recommendation)
+recommendation_locations,asking about locations to visit (recommendation)
+recommendation_movies,asking about movie to watch (recommendation)
+social_post,asking to post somethings e.g. on the social media
+social_query,asking questions about social posts
+takeaway_order,making a takeaway order
+takeaway_query,asking about the takeaway order
+transport_query,asking about the transportation and directions
+transport_taxi,asking to book a taxi
+transport_ticket,asking to buy or reserve a ticket for a trip
+transport_traffic,asking about the traffic situation
+weather_query,asking about the weather
