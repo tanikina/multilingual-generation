@@ -33,7 +33,6 @@ def preprocess_mwoz_file(input_file, output_file):
     total_count = len(data)
     turn_idx = 0
     for el in data:
-        dialogue_idx = el["dialogue_idx"]
         for turn in el["dialogue"]:
             turn_acts = []
             turn_slot_types = []
@@ -228,9 +227,9 @@ def preprocess_xsid(input_data, output_dir):
         else:
             train_file = input_data + "/" + lang + ".projectedTrain.conll.fixed"
         val_file = input_data + "/" + lang + ".valid.conll"
-        test_data = process_xsid_file(test_file, output_dir + "/" + lang + "_test.csv")
-        train_data = process_xsid_file(train_file, output_dir + "/" + lang + "_train.csv")
-        val_data = process_xsid_file(val_file, output_dir + "/" + lang + "_val.csv")
+        process_xsid_file(test_file, output_dir + "/" + lang + "_test.csv")
+        process_xsid_file(train_file, output_dir + "/" + lang + "_train.csv")
+        process_xsid_file(val_file, output_dir + "/" + lang + "_val.csv")
 
 
 if __name__ == "__main__":

@@ -10,9 +10,13 @@ parent = dirname(dirname(abspath(__file__)))
 sys.path.append(parent)
 
 import transformers
-from guided_decoding.gd_logit_processor import GuidedDecodingLogitsProcessor, GuidedParser
-from guided_decoding.grammar import intent_grammar_10, intent_grammar_60
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+
+from guided_decoding.gd_logit_processor import (
+    GuidedDecodingLogitsProcessor,
+    GuidedParser,
+)
+from guided_decoding.grammar import intent_grammar_10, intent_grammar_60
 
 random.seed(2024)
 
