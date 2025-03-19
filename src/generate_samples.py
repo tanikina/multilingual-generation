@@ -217,6 +217,7 @@ def generate_demos(args):
     unlabeled_examples = "\n".join(selected_texts[:threshold])
 
     model_name = args.model_name
+    verbose = args.verbose
 
     # Generation
 
@@ -283,12 +284,11 @@ def generate_demos(args):
                 self_generation_prompt = f"You are required to produce {num_self_demonstrations} examples in {language} that can have the label: {class_name} {added_explanation} Note that some examples from the dataset{diff_labels} look as follows:\nExamples:\n{examples}\nNow generate {num_self_demonstrations} similar examples{but} for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name}.\nGenerated examples for label {class_name}:\n"
             else:
                 self_generation_prompt = f"You are required to produce {num_self_demonstrations} examples in {language} that can have the label: {class_name} {added_explanation}. Generate {num_self_demonstrations} examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name}.\nGenerated examples for label {class_name}:\n"
-            # print(self_generation_prompt)
 
             messages = [
                 {
                     "role": "system",
-                    "content": f"You are an excellent sample generator and can generate representative samples for the given class in {language}.",
+                    "content": f"You are an excellent text generator and can generate representative text samples for the given class in {language}.",
                 },
                 {"role": "user", "content": self_generation_prompt},
             ]
@@ -336,7 +336,8 @@ def generate_demos(args):
                 )
 
                 decoded = outputs[0]["generated_text"][len(prompt) :]
-                print("DECODED before split:", decoded)
+                if verbose:
+                    print("DECODED before split:", decoded)
 
                 try:
                     if "</think>" in decoded:  # if using DeepSeek model
@@ -347,7 +348,8 @@ def generate_demos(args):
                     decoded = [item for item in decoded if len(item) > 0]
                     # skip the first one since it is typically "Here are x examples..."
                     decoded = decoded[1:]
-                    print("DECODED after split:", decoded)
+                    if verbose:
+                        print("DECODED after split:", decoded)
                     demos_to_check = [
                         item[item.index(" ") + 1 :]
                         if item[0].replace(".", "").isdigit() and " " in item
@@ -371,9 +373,15 @@ def generate_demos(args):
                                 terminators,
                             ):
                                 new_demonstrations.append(new_demo)
-                                print("Good:", new_demo, class_name)
+                                if verbose:
+                                    print(
+                                        "Good example (based on self-check):", new_demo, class_name
+                                    )
                             else:
-                                print("Bad:", new_demo, class_name)
+                                if verbose:
+                                    print(
+                                        "Bad example (based on self-check):", new_demo, class_name
+                                    )
                     else:
                         new_demonstrations = demos_to_check
                     self_demonstrations_per_class.extend(new_demonstrations)
@@ -471,18 +479,19 @@ def generate_demos(args):
                 for label_token in label_tokens:
                     if label_token in classes:
                         self_annotations.append(label_token)
-                        print(demo_text, ">>>", label_token)
+                        if verbose:
+                            print(demo_text, ">>>", label_token)
                         not_labeled = False
                         break
 
         if len(self_annotations) != len(self_demonstrations):
-            print("Mismatch all together!")
-            print(self_annotations, len(self_annotations))
-            print(self_demonstrations, len(self_demonstrations))
-            sys.exit(5)
+            raise ValueError(
+                    f"Mismatch per class! {len(self_annotations)} annotations and {len(self_demonstrations)} demonstrations."
+                )
 
-    print("****************************")
-    print("Output:", self_demonstrations)
+    if verbose:
+        print("****************************")
+        print("Output:", self_demonstrations)
 
     # write into file
     df = pd.DataFrame(data={"text": self_demonstrations, "anno": self_annotations})
@@ -508,6 +517,7 @@ if __name__ == "__main__":
     parser.add_argument("--with_label_explanation", type=bool, default=False)
     parser.add_argument("--use_simple_explanations", type=bool, default=False)
     parser.add_argument("--do_self_check", type=bool, default=False)
+    parser.add_argument("--verbose", type=bool, default=False)
 
     args = parser.parse_args()
     print("Parameters:")
