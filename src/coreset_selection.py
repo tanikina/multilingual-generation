@@ -251,11 +251,6 @@ def greedy_coreset(
             f"Invalid distance metric: {distance_metric}. " f"Possible values: {_DISTANCE_METRICS}"
         )
 
-    if selection_strategy == "density_aware_coreset":
-        # Compute density for all points
-        density_all = compute_density(x, k_neighbors=min(5, len(x)))
-        mean_density = np.mean(density_all)
-
     for _ in range(n):
         indices_s = np.concatenate([indices_labeled, ind_new]).astype(np.int64)
         dists = np.array([], dtype=np.float32)
@@ -265,8 +260,8 @@ def greedy_coreset(
             sims_batch = np.amin(dist, axis=1)
 
             # Compute mean and standard deviation of distances
-            mean_dist = np.mean(sims_batch)
-            std_dist = np.std(sims_batch)
+            # mean_dist = np.mean(sims_batch)
+            # std_dist = np.std(sims_batch)
             dists = np.append(dists, sims_batch)
 
         if selection_strategy == "max_similarity":

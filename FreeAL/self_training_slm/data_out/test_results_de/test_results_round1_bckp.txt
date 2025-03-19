@@ -1,0 +1,1 @@
+metrics={'test_loss': 2.527698040008545, 'test_model_preparation_time': 0.005, 'test_acc': 0.7929203539823009, 'test_runtime': 0.9595, 'test_samples_per_second': 588.876, 'test_steps_per_second': 37.521}

@@ -82,7 +82,6 @@ def find_demos(input_file, given_class_labels, threshold_per_class, method, prin
     elif method == "maxsim":
         # Compute max cossim between labels and examples
         corpus_embeddings = embedder.encode(corpus)
-        label_emb = embedder.encode(given_class_labels)
         similarities = embedder.similarity(label_embs, corpus_embeddings)
         for i in range(len(given_class_labels)):
             selected_sample_ids = torch.topk(

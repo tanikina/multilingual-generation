@@ -1,0 +1,7 @@
+eval_loss = 5.549426555633545
+eval_model_preparation_time = 0.005
+eval_acc = 0.561038961038961
+eval_runtime = 0.6903
+eval_samples_per_second = 557.723
+eval_steps_per_second = 36.216
+epoch = 50.0

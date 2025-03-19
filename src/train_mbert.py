@@ -172,7 +172,6 @@ def tokenize_function(data):
 def train(model, model_name, optimizer, train_loader, dev_loader, criterion, num_epochs):
     model.train()
     min_dev_loss = None
-    best_epoch = None
     no_improvement = 0
     patience = 5
     for epoch in range(num_epochs):
@@ -201,7 +200,6 @@ def train(model, model_name, optimizer, train_loader, dev_loader, criterion, num
             if min_dev_loss is None or min_dev_loss > total_dev_loss:
                 min_dev_loss = total_dev_loss
                 no_improvement = 0
-                best_epoch = epoch
                 torch.save(model.state_dict(), "saved_models/" + model_name + ".pt")
             elif min_dev_loss is not None:
                 no_improvement += 1
