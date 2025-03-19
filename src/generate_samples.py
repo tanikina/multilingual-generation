@@ -1,7 +1,7 @@
 import argparse
 import random
 import sys
-from os.path import abspath, dirname
+from os.path import abspath, dirname, isfile
 
 import pandas as pd
 import torch
@@ -21,6 +21,13 @@ from guided_decoding.grammar import intent_grammar_10, intent_grammar_60
 random.seed(2024)
 
 HF_TOKEN = ""  # HuggingFace token to access the models
+hf_token_path = "src/hf_token.txt"
+if not (isfile(hf_token_path)):
+    raise Exception(f"{hf_token_path} does not exist!")
+with open(hf_token_path) as f:
+    HF_TOKEN = f.readlines()[0].strip()
+    if not (HF_TOKEN.startswith("hf_")):
+        raise ValueError(f"Invalid HF_TOKEN: {HF_TOKEN}.")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -486,8 +493,8 @@ def generate_demos(args):
 
         if len(self_annotations) != len(self_demonstrations):
             raise ValueError(
-                    f"Mismatch per class! {len(self_annotations)} annotations and {len(self_demonstrations)} demonstrations."
-                )
+                f"Mismatch per class! {len(self_annotations)} annotations and {len(self_demonstrations)} demonstrations."
+            )
 
     if verbose:
         print("****************************")
