@@ -388,11 +388,9 @@ def generate_demos(args):
                 self_annotations.append(class_name)
 
             if len(self_annotations) != len(self_demonstrations):
-                # TODO raise a proper Exception!
-                print("Mismatch per class!")
-                print("Annotations:", self_annotations, len(self_annotations))
-                print("Demonstrations:", self_demonstrations, len(self_demonstrations))
-                sys.exit(5)
+                raise ValueError(
+                    f"Mismatch per class! {len(self_annotations)} annotations and {len(self_demonstrations)} demonstrations."
+                )
     else:
         if use_gold_demos:
             demo_examples = ""
