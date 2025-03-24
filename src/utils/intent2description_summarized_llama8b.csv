@@ -1,0 +1,6 @@
+intent,description
+alarm_query,"The alarm_query intent is used to query and retrieve information about user-set alarms, including active alarms, scheduled alarms, and alarm times. It allows users to ask about their current alarms, upcoming alarms, or specific alarms set for a particular day or time."
+alarm_remove,"The intent alarm_remove aims to cancel or delete a scheduled alarm, whether it's a one-time alarm or a recurring alarm. The intent can be triggered by phrases such as delete my alarm, cancel my alarm, remove tomorrow's alarm, or delete my [time] alarm."
+alarm_set,"The intent alarm_set is about setting or asking about the setting of a reminder or alarm for a specific time, date, or event. It involves setting a notification to remind the user of a task, appointment, or event, and can include options such as snoozing or continuous alerts."
+audio_volume_down,"Adjust the audio volume to a lower level, making it more comfortable and quieter."
+audio_volume_mute,"Request to mute the audio volume, either temporarily or permanently, often in specific situations such as during a meeting, when not at home, or to control the sound level."
