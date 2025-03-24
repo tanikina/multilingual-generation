@@ -10,7 +10,12 @@ parent = dirname(dirname(abspath(__file__)))
 sys.path.append(parent)
 
 import transformers
-from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+from transformers import (
+    AutoConfig,
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    Gemma3ForCausalLM,
+)
 
 from guided_decoding.gd_logit_processor import (
     GuidedDecodingLogitsProcessor,
@@ -244,6 +249,10 @@ def generate_demos(args):
         model = AutoModelForCausalLM.from_pretrained(
             model_name, device_map="auto", config=config, token=HF_TOKEN
         )
+    elif "gemma" in model_name.lower():
+        model = Gemma3ForCausalLM.from_pretrained(
+            model_name, device_map="auto", token=HF_TOKEN
+        ).eval()
     else:
         raise ValueError(
             "Unsupported model name {model_name}. Should be either Llama, Qwen or Aya model."
