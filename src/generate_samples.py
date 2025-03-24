@@ -17,10 +17,7 @@ from transformers import (
     Gemma3ForCausalLM,
 )
 
-from guided_decoding.gd_logit_processor import (
-    GuidedDecodingLogitsProcessor,
-    GuidedParser,
-)
+from class_labels import MASSIVE10_LABELS, MASSIVE60_LABELS, SIB200_LABELS
 
 random.seed(2024)
 
@@ -80,8 +77,8 @@ def self_check(new_demo, language, class_name, class_description, pipeline, term
         return False
 
 
-def askLLM(message, tokenizer, model, parser, guided_preprocessor, classes):
-    message += "\nSelect one of the following labels: " + ", ".join(classes)
+def askLLM(message, tokenizer, model, parser, guided_preprocessor, labels):
+    message += "\nSelect one of the following labels: " + ", ".join(labels)
     _input = tokenizer(message, return_tensors="pt")
     input_ids = _input.input_ids.to(device)
     response = ""
@@ -96,7 +93,7 @@ def askLLM(message, tokenizer, model, parser, guided_preprocessor, classes):
         try:
             response = tokenizer.decode(output[0]).split(message)[1]
         except Exception as e:
-            response = classes[0]
+            response = labels[0]
             print(f"Failed! {e}", tokenizer.decode(output[0]))
     return response
 
@@ -111,82 +108,14 @@ def valid_sample(demo):
 def generate_demos(args):
     # prepare the parameters
     language = args.language
-    if args.num_classes == 10:
-        classes = [
-            "alarm_query",
-            "audio_volume_down",
-            "calendar_remove",
-            "cooking_recipe",
-            "datetime_convert",
-            "email_sendemail",
-            "play_audiobook",
-            "recommendation_movies",
-            "transport_ticket",
-            "weather_query",
-        ]
+    if args.dataset == "massive10":
+        labels = MASSIVE10_LABELS
+    elif args.dataset == "massive60":
+        labels = MASSIVE60_LABELS
+    elif args.dataset == "sib-200":
+        labels = SIB200_LABELS
     else:
-        classes = [
-            "alarm_query",
-            "alarm_remove",
-            "alarm_set",
-            "audio_volume_down",
-            "audio_volume_mute",
-            "audio_volume_other",
-            "audio_volume_up",
-            "calendar_query",
-            "calendar_remove",
-            "calendar_set",
-            "cooking_query",
-            "cooking_recipe",
-            "datetime_convert",
-            "datetime_query",
-            "email_addcontact",
-            "email_query",
-            "email_querycontact",
-            "email_sendemail",
-            "general_greet",
-            "general_joke",
-            "general_quirky",
-            "iot_cleaning",
-            "iot_coffee",
-            "iot_hue_lightchange",
-            "iot_hue_lightdim",
-            "iot_hue_lightoff",
-            "iot_hue_lighton",
-            "iot_hue_lightup",
-            "iot_wemo_off",
-            "iot_wemo_on",
-            "lists_createoradd",
-            "lists_query",
-            "lists_remove",
-            "music_dislikeness",
-            "music_likeness",
-            "music_query",
-            "music_settings",
-            "news_query",
-            "play_audiobook",
-            "play_game",
-            "play_music",
-            "play_podcasts",
-            "play_radio",
-            "qa_currency",
-            "qa_definition",
-            "qa_factoid",
-            "qa_maths",
-            "qa_stock",
-            "recommendation_events",
-            "recommendation_locations",
-            "recommendation_movies",
-            "social_post",
-            "social_query",
-            "takeaway_order",
-            "takeaway_query",
-            "transport_query",
-            "transport_taxi",
-            "transport_ticket",
-            "transport_traffic",
-            "weather_query",
-        ]
+        raise ValueError(f"Unknown dataset {args.dataset}")
 
     input_path = args.input_path
     output_path = args.output_path
@@ -205,17 +134,16 @@ def generate_demos(args):
     elif args.use_english_demos:
         # read English data
         lang_code = args.language.split("-")[0]
-        # TODO: pass the dataset name as a parameter?
         df_english_demos = pd.read_csv(
             input_path.replace(basename(input_path), "en-US_train.csv").replace(
-                f"/{lang_code}-", "/en-"
+                f"/{lang_code}-{args.dataset}", "/en-{args.dataset}"
             )
         )
         demo_texts = df_english_demos["text"]
         demo_labels = df_english_demos["intent"]
 
     for txt, lbl in zip(demo_texts, demo_labels):
-        if lbl in classes:
+        if lbl in labels:
             if lbl not in class2demos:
                 class2demos[lbl] = []
             class2demos[lbl].append(txt)
@@ -275,7 +203,7 @@ def generate_demos(args):
     for label, explanation in zip(labels, explanations):
         label2explanation[label] = explanation
 
-    for class_name in classes:
+    for class_name in labels:
         class_demos = class2demos[class_name]
         random.shuffle(class_demos)
         class_demos = class_demos[:num_input_demos]
@@ -419,7 +347,7 @@ if __name__ == "__main__":
     parser.add_argument("--input_path", type=str)
     parser.add_argument("--output_path", type=str)
 
-    parser.add_argument("--num_classes", type=int, default=10)
+    parser.add_argument("--dataset", type=str, default="massive10")
     parser.add_argument(
         "--model_name", type=str, default="TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ"
     )
