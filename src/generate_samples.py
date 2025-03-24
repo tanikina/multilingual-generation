@@ -14,7 +14,7 @@ from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
     AutoTokenizer,
-    Gemma3ForCausalLM,
+    #Gemma3ForCausalLM,
 )
 
 from class_labels import MASSIVE10_LABELS, MASSIVE60_LABELS, SIB200_LABELS
@@ -198,9 +198,9 @@ def generate_demos(args):
     else:
         explanation_fname = "src/utils/intent2description_summarized.csv"
     df_explanations = pd.read_csv(explanation_fname)
-    labels = df_explanations["intent"].to_list()
+    exp_labels = df_explanations["intent"].to_list()
     explanations = df_explanations["description"].to_list()
-    for label, explanation in zip(labels, explanations):
+    for label, explanation in zip(exp_labels, explanations):
         label2explanation[label] = explanation
 
     for class_name in labels:
@@ -277,7 +277,7 @@ def generate_demos(args):
                     split = decoded.split("</think>")
                     if len(split) > 1:
                         decoded = split[1].strip()
-                decoded = decoded.split("\n")[:num_samples_to_generate]
+                decoded = decoded.split("\n")
                 decoded = [item for item in decoded if len(item) > 0]
                 # skip the first one since it is typically "Here are x examples..."
                 decoded = decoded[1:]
@@ -321,11 +321,11 @@ def generate_demos(args):
                 print("Failed decoding!", e)
                 continue
 
-        self_demonstrations_per_class = self_demonstrations_per_class[:num_samples_to_generate]
+            self_demonstrations_per_class = self_demonstrations_per_class[:num_samples_to_generate]
 
-        self_demonstrations.extend(self_demonstrations_per_class)
-        for i in range(len(self_demonstrations_per_class)):
-            self_annotations.append(class_name)
+            self_demonstrations.extend(self_demonstrations_per_class)
+            for i in range(len(self_demonstrations_per_class)):
+                self_annotations.append(class_name)
 
         if len(self_annotations) != len(self_demonstrations):
             raise ValueError(
