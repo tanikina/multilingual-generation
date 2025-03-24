@@ -106,10 +106,6 @@ def valid_sample(demo):
     # this is just a heuristic to filter out sentences with unusual length
     if len(demo) < 10 or len(demo) > 100:
         return False
-    # we also filter out cases with invalid start (e.g. rephrasing prompt instructions etc)
-    for wrong_start in ["I", "Let", "Here", "First"]:
-        if demo.startswith(wrong_start):
-            return False
     return True
 
 
