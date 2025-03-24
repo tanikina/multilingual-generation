@@ -45,7 +45,7 @@ def self_check(new_demo, language, class_name, class_description, pipeline, term
         },
         {
             "role": "user",
-            "content": f"Decide whether the following example belongs to the class {class_name} which means {class_description}. Answer yes if it belongs and represents a good sample (grammatically correct and complete) and no if it does not. Explain your answer in a concise way after generating yes or no. Input: {new_demo} Answer:",
+            "content": f"Decide whether the following example belongs to the class {class_name} which means {class_description}. Answer yes if it belongs and represents a good sample (grammatically correct and complete) and no if it does not. Answer no if the example is not in {language}. Explain your answer in a concise way after generating yes or no. Input: {new_demo} Answer:",
         },
     ]
     max_new_tokens = 42
