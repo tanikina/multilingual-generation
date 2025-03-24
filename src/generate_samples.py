@@ -220,8 +220,8 @@ def generate_demos(args):
                 class2demos[lbl] = []
             class2demos[lbl].append(txt)
 
-    num_self_demonstrations = args.num_self_demonstrations
-    num_gold_demos = args.num_gold_demos
+    num_samples_to_generate = args.num_samples_to_generate
+    num_input_demos = args.num_input_demos
 
     do_self_check = args.do_self_check
     with_label_explanation = args.with_label_explanation
@@ -278,7 +278,7 @@ def generate_demos(args):
     for class_name in classes:
         class_demos = class2demos[class_name]
         random.shuffle(class_demos)
-        class_demos = class_demos[:num_gold_demos]
+        class_demos = class_demos[:num_input_demos]
         examples = class_demos
 
         if with_label_explanation:
@@ -286,9 +286,9 @@ def generate_demos(args):
         else:
             added_explanation = ""
         if len(examples) > 0:
-            self_generation_prompt = f"You are required to produce {num_self_demonstrations} examples in {language} that can have the label: {class_name} {added_explanation} Note that some examples from the dataset look as follows:\nExamples:\n{examples}\nNow generate {num_self_demonstrations} similar examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name}.\nGenerated examples for label {class_name}:\n"
+            self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {language} that can have the label: {class_name} {added_explanation} Note that some examples from the dataset look as follows:\nExamples:\n{examples}\nNow generate {num_samples_to_generate} similar examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name}.\nGenerated examples for label {class_name}:\n"
         else:
-            self_generation_prompt = f"You are required to produce {num_self_demonstrations} examples in {language} that can have the label: {class_name} {added_explanation}. Generate {num_self_demonstrations} examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name}.\nGenerated examples for label {class_name}:\n"
+            self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {language} that can have the label: {class_name} {added_explanation}. Generate {num_samples_to_generate} examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name}.\nGenerated examples for label {class_name}:\n"
 
         messages = [
             {
@@ -300,7 +300,7 @@ def generate_demos(args):
 
         self_demonstrations_per_class = []
 
-        while len(self_demonstrations_per_class) < num_self_demonstrations:
+        while len(self_demonstrations_per_class) < num_samples_to_generate:
 
             pipeline = transformers.pipeline(
                 "text-generation",
@@ -349,7 +349,7 @@ def generate_demos(args):
                     split = decoded.split("</think>")
                     if len(split) > 1:
                         decoded = split[1].strip()
-                decoded = decoded.split("\n")[:num_self_demonstrations]
+                decoded = decoded.split("\n")[:num_samples_to_generate]
                 decoded = [item for item in decoded if len(item) > 0]
                 # skip the first one since it is typically "Here are x examples..."
                 decoded = decoded[1:]
@@ -393,7 +393,7 @@ def generate_demos(args):
                 print("Failed decoding!", e)
                 continue
 
-        self_demonstrations_per_class = self_demonstrations_per_class[:num_self_demonstrations]
+        self_demonstrations_per_class = self_demonstrations_per_class[:num_samples_to_generate]
 
         self_demonstrations.extend(self_demonstrations_per_class)
         for i in range(len(self_demonstrations_per_class)):
@@ -423,10 +423,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_name", type=str, default="TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ"
     )
-    parser.add_argument("--num_self_demonstrations", type=int, default=20)
+    parser.add_argument("--num_samples_to_generate", type=int, default=100)
+    parser.add_argument("--num_input_demos", type=int, default=10)
     parser.add_argument("--use_english_demos", type=bool, default=False)
     parser.add_argument("--use_translated_demos", type=bool, default=False)
-    parser.add_argument("--num_gold_demos", type=int, default=2)
     parser.add_argument("--with_label_explanation", type=bool, default=False)
     parser.add_argument("--use_simple_explanations", type=bool, default=False)
     parser.add_argument("--do_self_check", type=bool, default=False)
