@@ -247,6 +247,7 @@ def evaluate(model, test_loader, test_set, criterion, setting, language):
     cmd.plot(xticks_rotation="vertical")
     fig = cmd.figure_
     fig.tight_layout()
+    os.makedirs("figures", exist_ok=True)
     fig_fname = "figures/" + language + "_" + setting.split("/")[-1]
     fig.savefig(fig_fname.replace(".csv", ".png"))
 
