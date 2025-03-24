@@ -337,8 +337,8 @@ def generate_demos(args):
         print("Output:", self_demonstrations)
 
     # write into file
-    df = pd.DataFrame(data={"text": self_demonstrations, "anno": self_annotations})
-    df.to_csv(output_path, index=False, header=False)
+    df = pd.DataFrame(data={"text": self_demonstrations, "intent": self_annotations})
+    df.to_csv(output_path, index=True, header=True)
 
 
 if __name__ == "__main__":
