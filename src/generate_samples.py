@@ -136,7 +136,7 @@ def generate_demos(args):
         lang_code = args.language.split("-")[0]
         df_english_demos = pd.read_csv(
             input_path.replace(basename(input_path), "en-US_train.csv").replace(
-                f"/{lang_code}-{args.dataset}", "/en-{args.dataset}"
+                f"/{lang_code}-", "/en-"
             )
         )
         demo_texts = df_english_demos["text"]
