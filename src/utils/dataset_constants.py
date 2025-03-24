@@ -51,6 +51,7 @@ LANG_MASSIVE = [
     "zh-CN",
     "zh-TW",
 ]
+
 INTENT_MASSIVE = [
     "datetime_query",
     "iot_hue_lightchange",
@@ -147,6 +148,7 @@ LANG_SIB200 = [
     "tel_Telu",
     "cym_Latn",
 ]  # note: this list is not exhaustive, see https://github.com/dadelani/sib-200/tree/main
+
 INTENT_SIB200 = [
     "science/technology",
     "travel",
@@ -157,6 +159,7 @@ INTENT_SIB200 = [
     "geography",
 ]
 
+# we map SIB-200 language codes to the language codes of MASSIVE for consistency
 sib200_to_massive_lang_name = {
     "eng_Latn": "en-US",
     "deu_Latn": "de-DE",
