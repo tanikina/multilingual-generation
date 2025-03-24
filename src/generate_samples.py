@@ -14,7 +14,7 @@ from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
     AutoTokenizer,
-    #Gemma3ForCausalLM,
+    Gemma3ForCausalLM,
 )
 
 from class_labels import MASSIVE10_LABELS, MASSIVE60_LABELS, SIB200_LABELS
