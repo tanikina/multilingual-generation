@@ -135,6 +135,7 @@ SCENARIO_MASSIVE = [
 ]
 
 LANG_SIB200 = [
+    "eng_Latn",
     "deu_Latn",
     "tha_Thai",
     "heb_Hebr",
@@ -157,6 +158,7 @@ INTENT_SIB200 = [
 ]
 
 sib200_to_massive_lang_name = {
+    "eng_Latn": "en-US",
     "deu_Latn": "de-DE",
     "tha_Thai": "th-TH",
     "heb_Hebr": "he-IL",
