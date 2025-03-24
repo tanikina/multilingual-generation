@@ -52,6 +52,8 @@ LANG_MASSIVE = [
     "zh-TW",
 ]
 
+# note that this is the original order that corresponds to the class ids
+# see https://huggingface.co/datasets/AmazonScience/massive/blob/main/massive.py
 INTENT_MASSIVE = [
     "datetime_query",
     "iot_hue_lightchange",
