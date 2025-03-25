@@ -214,9 +214,9 @@ def generate_demos(args):
         else:
             added_explanation = ""
         if len(examples) > 0:
-            self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {language} that can have the label: {class_name} {added_explanation} Note that some examples from the dataset look as follows:\nExamples:\n{examples}\nNow generate {num_samples_to_generate} similar examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name}.\nGenerated examples for label {class_name}:\n"
+            self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {language} that can have the label: {class_name} {added_explanation} Note that some examples from the dataset look as follows:\nExamples:\n{examples}\nNow generate {num_samples_to_generate} similar examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name} and do not repeat the instruction.\nGenerated examples for label {class_name}:\n"
         else:
-            self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {language} that can have the label: {class_name} {added_explanation}. Generate {num_samples_to_generate} examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name}.\nGenerated examples for label {class_name}:\n"
+            self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {language} that can have the label: {class_name} {added_explanation}. Generate {num_samples_to_generate} examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name} and do not repeat the instruction.\nGenerated examples for label {class_name}:\n"
 
         messages = [
             {
@@ -228,36 +228,30 @@ def generate_demos(args):
 
         self_demonstrations_per_class = []
 
+        pipeline = transformers.pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            model_kwargs={"torch_dtype": torch.bfloat16},
+        )
+
+        max_new_tokens = 128
+        if "deepseek" in model_name.lower():
+            max_new_tokens = 2500
+
+        prompt = pipeline.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+
+        terminators = [pipeline.tokenizer.eos_token_id]
+
+        if "aya" in model_name.lower():
+            terminators.append(pipeline.tokenizer.convert_tokens_to_ids("<|END_OF_TURN_TOKEN|>"))
+
+        elif "llama" in model_name.lower():
+            terminators.append(pipeline.tokenizer.convert_tokens_to_ids("<|eot_id|>"))
+
         while len(self_demonstrations_per_class) < num_samples_to_generate:
-
-            pipeline = transformers.pipeline(
-                "text-generation",
-                model=model,
-                tokenizer=tokenizer,
-                model_kwargs={"torch_dtype": torch.bfloat16},
-            )
-
-            max_new_tokens = 128
-            if "deepseek" in model_name.lower():
-                max_new_tokens = 2500
-                # if "deepseek" in pipeline.model.name_or_path:
-                #    system_content = messages[0]["content"]
-                #    messages = messages[1:]
-                #    messages[0]["content"] = system_content + " " + messages[0]["content"]
-
-            prompt = pipeline.tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
-
-            terminators = [pipeline.tokenizer.eos_token_id]
-
-            if "aya" in model_name.lower():
-                terminators.append(
-                    pipeline.tokenizer.convert_tokens_to_ids("<|END_OF_TURN_TOKEN|>")
-                )
-
-            elif "llama" in model_name.lower():
-                terminators.append(pipeline.tokenizer.convert_tokens_to_ids("<|eot_id|>"))
 
             outputs = pipeline(
                 prompt,
