@@ -21,6 +21,20 @@ from class_labels import MASSIVE10_LABELS, MASSIVE60_LABELS, SIB200_LABELS
 
 random.seed(2024)
 
+lang_name_map = {
+    "en-US": "English",
+    "de-DE": "German",
+    "th-TH": "Thai",
+    "he-IL": "Hebrew",
+    "id-ID": "Indonesian",
+    "sw-KE": "Swahili",
+    "ro-RO": "Romanian",
+    "az-AZ": "Azerbaijani",
+    "sl-SL": "Slovenian",
+    "te-IN": "Telugu",
+    "cy-GB": "Welsh",
+}
+
 HF_TOKEN = ""  # HuggingFace token to access the models
 hf_token_path = "src/hf_token.txt"
 if not (isfile(hf_token_path)):
@@ -33,23 +47,20 @@ with open(hf_token_path) as f:
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def self_check(new_demo, language, class_name, class_description, pipeline, terminators):
+def self_check(new_demo, lang_name, class_name, class_description, pipeline, terminators):
     messages = [
         {
             "role": "system",
-            "content": f"You are an excellent classifier and can reason whether a given sample in {language} belongs to the class {class_name} or not.",
+            "content": f"You are an excellent classifier and can reason whether a given sample in {lang_name} belongs to the class {class_name} or not.",
         },
         {
             "role": "user",
-            "content": f"Decide whether the following example belongs to the class {class_name} which means {class_description}. Answer yes if it belongs and represents a good sample (grammatically correct and complete) and no if it does not. Answer no if the example is not in {language}. Explain your answer in a concise way after generating yes or no. Input: {new_demo} Answer:",
+            "content": f"Decide whether the following example belongs to the class {class_name} which means {class_description}. Answer yes if it belongs and represents a good sample (grammatically correct and complete) and no if it does not. Answer no if the example is not in {lang_name}. Explain your answer in a concise way after generating yes or no. Input: {new_demo} Answer:",
         },
     ]
-    max_new_tokens = 42
+    max_new_tokens = 64
     if "deepseek" in pipeline.model.name_or_path:
         max_new_tokens = 2000
-    #    system_content = messages[0]["content"]
-    #    messages = messages[1:]
-    #    messages[0]["content"] = system_content + " " + messages[0]["content"]
 
     prompt = pipeline.tokenizer.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True
@@ -57,7 +68,7 @@ def self_check(new_demo, language, class_name, class_description, pipeline, term
 
     outputs = pipeline(
         prompt,
-        max_new_tokens=max_new_tokens,  # 5
+        max_new_tokens=max_new_tokens,
         eos_token_id=terminators,
         do_sample=True,
         temperature=0.6,
@@ -70,32 +81,13 @@ def self_check(new_demo, language, class_name, class_description, pipeline, term
             decoded = decoded.split("</think>")[1].lower()
     else:
         decoded = decoded[len(prompt) :].lower()
-    print(decoded)
+
+    decoded = decoded.replace("\n", " ").strip()
+
     if "yes" in decoded:
-        return True
+        return (True, decoded)
     else:
-        return False
-
-
-def askLLM(message, tokenizer, model, parser, guided_preprocessor, labels):
-    message += "\nSelect one of the following labels: " + ", ".join(labels)
-    _input = tokenizer(message, return_tensors="pt")
-    input_ids = _input.input_ids.to(device)
-    response = ""
-
-    with torch.no_grad():
-        output = model.greedy_search(
-            input_ids=input_ids,
-            logits_processor=guided_preprocessor,
-            eos_token_id=parser.eos_token,
-            pad_token_id=model.config.pad_token_id,
-        )
-        try:
-            response = tokenizer.decode(output[0]).split(message)[1]
-        except Exception as e:
-            response = labels[0]
-            print(f"Failed! {e}", tokenizer.decode(output[0]))
-    return response
+        return (False, decoded)
 
 
 def valid_sample(demo):
@@ -108,6 +100,7 @@ def valid_sample(demo):
 def generate_demos(args):
     # prepare the parameters
     language = args.language
+    lang_name = lang_name_map[language]
     if args.dataset == "massive10":
         labels = MASSIVE10_LABELS
     elif args.dataset == "massive60":
@@ -192,6 +185,12 @@ def generate_demos(args):
     self_demonstrations = []
     self_annotations = []
 
+    # storing unfiltered responses when using self-check
+    self_demonstrations_non_revised = []
+    self_annotations_non_revised = []
+    self_check_explanations = []
+    self_check_annotations = []
+
     label2explanation = dict()
     if use_simple_explanations:
         explanation_fname = "src/utils/intent2description.csv"
@@ -214,19 +213,22 @@ def generate_demos(args):
         else:
             added_explanation = ""
         if len(examples) > 0:
-            self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {language} that can have the label: {class_name} {added_explanation} Note that some examples from the dataset look as follows:\nExamples:\n{examples}\nNow generate {num_samples_to_generate} similar examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name} and do not repeat the instruction.\nGenerated examples for label {class_name}:\n"
+            self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {lang_name} that can have the label: {class_name} {added_explanation} Note that some examples from the dataset look as follows:\nExamples:\n{examples}\nNow generate {num_samples_to_generate} similar examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name} and do not repeat the instruction.\nGenerated examples for label {class_name}:\n"
         else:
-            self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {language} that can have the label: {class_name} {added_explanation}. Generate {num_samples_to_generate} examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name} and do not repeat the instruction.\nGenerated examples for label {class_name}:\n"
+            self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {lang_name} that can have the label: {class_name} {added_explanation}. Generate {num_samples_to_generate} examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name} and do not repeat the instruction.\nGenerated examples for label {class_name}:\n"
 
         messages = [
             {
                 "role": "system",
-                "content": f"You are an excellent text generator and can generate representative text samples for the given class in {language}.",
+                "content": f"You are an excellent text generator and can generate representative text samples for the given class in {lang_name}.",
             },
             {"role": "user", "content": self_generation_prompt},
         ]
 
         self_demonstrations_per_class = []
+        self_demonstrations_per_class_non_revised = []
+        self_check_explanations_per_class = []
+        self_check_annotations_per_class = []
 
         pipeline = transformers.pipeline(
             "text-generation",
@@ -263,8 +265,6 @@ def generate_demos(args):
             )
 
             decoded = outputs[0]["generated_text"][len(prompt) :]
-            if verbose:
-                print("DECODED before split:", decoded)
 
             try:
                 if "</think>" in decoded:  # if using DeepSeek model
@@ -276,7 +276,7 @@ def generate_demos(args):
                 # skip the first one since it is typically "Here are x examples..."
                 decoded = decoded[1:]
                 if verbose:
-                    print("DECODED after split:", decoded)
+                    print("DECODED:", decoded)
                 demos_to_check = [
                     item[item.index(" ") + 1 :]
                     if item[0].replace(".", "").isdigit() and " " in item
@@ -284,7 +284,7 @@ def generate_demos(args):
                     for item in decoded
                 ]
                 demos_to_check = [
-                    demo.replace("*", "").replace('"', "")
+                    demo.replace("*", "").replace('"', "").replace("'", "")
                     for demo in demos_to_check
                     if valid_sample(demo)
                 ]
@@ -294,32 +294,51 @@ def generate_demos(args):
                 if do_self_check:
                     new_demonstrations = []
                     for new_demo in demos_to_check:
-                        if self_check(
+                        self_check_passed, self_check_verdict = self_check(
                             new_demo,
-                            language,
+                            lang_name,
                             class_name,
                             label2explanation[class_name],
                             pipeline,
                             terminators,
-                        ):
+                        )
+                        if self_check_passed:
                             new_demonstrations.append(new_demo)
-                            if verbose:
-                                print("Good example (based on self-check):", new_demo, class_name)
+                            self_check_annotations_per_class.append(1)
                         else:
-                            if verbose:
-                                print("Bad example (based on self-check):", new_demo, class_name)
+                            self_check_annotations_per_class.append(0)
+                        self_check_explanations_per_class.append(self_check_verdict)
                 else:
                     new_demonstrations = demos_to_check
                 self_demonstrations_per_class.extend(new_demonstrations)
+                # add non-revised demonstrations to keep the same samples
+                if do_self_check:
+                    self_demonstrations_per_class_non_revised.extend(demos_to_check)
             except Exception as e:
                 print("Failed decoding!", e)
                 continue
 
-            self_demonstrations_per_class = self_demonstrations_per_class[:num_samples_to_generate]
+        self_demonstrations_per_class = self_demonstrations_per_class[:num_samples_to_generate]
+        self_demonstrations.extend(self_demonstrations_per_class)
+        for i in range(len(self_demonstrations_per_class)):
+            self_annotations.append(class_name)
 
-            self_demonstrations.extend(self_demonstrations_per_class)
-            for i in range(len(self_demonstrations_per_class)):
-                self_annotations.append(class_name)
+        # with self-check we store both the "checked" and the originally generated samples with explanations
+        if do_self_check:
+            self_demonstrations_per_class_non_revised = self_demonstrations_per_class_non_revised[
+                :num_samples_to_generate
+            ]
+            self_check_explanations_per_class = self_check_explanations_per_class[
+                :num_samples_to_generate
+            ]
+            self_check_annotations_per_class = self_check_annotations_per_class[
+                :num_samples_to_generate
+            ]
+            self_demonstrations_non_revised.extend(self_demonstrations_per_class_non_revised)
+            self_check_explanations.extend(self_check_explanations_per_class)
+            self_check_annotations.extend(self_check_annotations_per_class)
+            for i in range(len(self_demonstrations_per_class_non_revised)):
+                self_annotations_non_revised.append(class_name)
 
         if len(self_annotations) != len(self_demonstrations):
             raise ValueError(
@@ -334,10 +353,23 @@ def generate_demos(args):
     df = pd.DataFrame(data={"text": self_demonstrations, "intent": self_annotations})
     df.to_csv(output_path, index=True, header=True)
 
+    if do_self_check:
+        df_non_revised = pd.DataFrame(
+            data={
+                "text": self_demonstrations_non_revised,
+                "intent": self_annotations_non_revised,
+                "explanation": self_check_explanations,
+                "verdict": self_check_annotations,
+            }
+        )
+        df_non_revised.to_csv(
+            output_path.replace(".csv", "_with-rejected.csv"), index=True, header=True
+        )
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Training parameters.")
-    parser.add_argument("--language", type=str)
+    parser.add_argument("--language", type=str, choices=list(lang_name_map.keys()))
     parser.add_argument("--input_path", type=str)
     parser.add_argument("--output_path", type=str)
 
