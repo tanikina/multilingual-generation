@@ -289,7 +289,7 @@ def generate_demos(args):
                     if valid_sample(demo)
                 ]
                 # the last entry is often truncated, thus we skip it
-                demos_to_check = demos_to_check[:-1]
+                demos_to_check = list(set(demos_to_check[:-1]))
 
                 if do_self_check:
                     new_demonstrations = []
