@@ -1,10 +1,13 @@
 import argparse
+import ast
+import os
 import random
 import sys
 from os.path import abspath, basename, dirname, isfile
 
 import pandas as pd
 import torch
+from vllm import LLM, SamplingParams
 
 parent = dirname(dirname(abspath(__file__)))
 sys.path.append(parent)
@@ -18,6 +21,8 @@ from transformers import (
 )
 
 from class_labels import MASSIVE10_LABELS, MASSIVE60_LABELS, SIB200_LABELS
+
+os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
 
 random.seed(2024)
 
@@ -47,7 +52,17 @@ with open(hf_token_path) as f:
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def self_check(new_demo, lang_name, class_name, class_description, pipeline, terminators):
+def self_check(
+    new_demo,
+    lang_name,
+    class_name,
+    class_description,
+    pipeline,
+    terminators,
+    use_vllm,
+    vllm_model,
+    vllm_sampling_params,
+):
     messages = [
         {
             "role": "system",
@@ -58,23 +73,30 @@ def self_check(new_demo, lang_name, class_name, class_description, pipeline, ter
             "content": f"Decide whether the following example belongs to the class {class_name} which means {class_description}. Answer yes if it belongs and represents a good sample (grammatically correct and complete) and no if it does not. Answer no if the example is not in {lang_name}. Explain your answer in a concise way after generating yes or no. Input: {new_demo} Answer:",
         },
     ]
-    max_new_tokens = 64
 
-    prompt = pipeline.tokenizer.apply_chat_template(
-        messages, tokenize=False, add_generation_prompt=True
-    )
+    if use_vllm:
+        decoded_outputs = vllm_model.generate(
+            messages[0]["content"] + " " + messages[1]["content"], vllm_sampling_params
+        )
+        decoded = decoded_outputs[0].outputs[0].text  # use single prompt!
+    else:
+        max_new_tokens = 64
 
-    outputs = pipeline(
-        prompt,
-        max_new_tokens=max_new_tokens,
-        eos_token_id=terminators,
-        do_sample=True,
-        temperature=0.6,
-        top_p=0.9,
-    )
+        prompt = pipeline.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
 
-    decoded = outputs[0]["generated_text"]
-    decoded = decoded[len(prompt) :].lower().replace("\n", " ").strip()
+        outputs = pipeline(
+            prompt,
+            max_new_tokens=max_new_tokens,
+            eos_token_id=terminators,
+            do_sample=True,
+            temperature=0.6,
+            top_p=0.9,
+        )
+
+        decoded = outputs[0]["generated_text"]
+        decoded = decoded[len(prompt) :].lower().replace("\n", " ").strip()
 
     if "yes" in decoded:
         return (True, decoded)
@@ -133,10 +155,13 @@ def generate_demos(args):
                 class2demos[lbl] = []
             class2demos[lbl].append(txt)
 
-    num_samples_to_generate = args.num_samples_to_generate
+    num_samples_to_generate = (
+        args.num_samples_to_generate + 2
+    )  # because we remove the first and the last ones
     num_input_demos = args.num_input_demos
 
     do_self_check = args.do_self_check
+    use_vllm = args.use_vllm
     with_label_explanation = args.with_label_explanation
     use_simple_explanations = args.use_simple_explanations
 
@@ -145,30 +170,36 @@ def generate_demos(args):
 
     # Generation
 
-    if "aya" in model_name.lower():
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name, torch_dtype="auto", device_map="auto", token=HF_TOKEN
-        )
-    elif "qwen" in model_name.lower():
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", token=HF_TOKEN)
-    elif "llama" in model_name.lower():
-        config = AutoConfig.from_pretrained(model_name)
-        config.quantization_config["disable_exllama"] = True
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name, device_map="auto", config=config, token=HF_TOKEN
-        )
-    elif "gemma" in model_name.lower():
-        model = Gemma3ForCausalLM.from_pretrained(
-            model_name, device_map="auto", token=HF_TOKEN
-        ).eval()
+    if use_vllm:
+        vllm_model = LLM(model=model_name, tensor_parallel_size=1, max_model_len=2048)
+        vllm_sampling_params = SamplingParams(temperature=0.8, top_p=0.95)
     else:
-        raise ValueError(
-            "Unsupported model name {model_name}. Should be either Llama, Qwen or Aya model."
-        )
+        if "aya" in model_name.lower():
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name, torch_dtype="auto", device_map="auto", token=HF_TOKEN
+            )
+        elif "qwen" in model_name.lower():
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name, device_map="auto", token=HF_TOKEN
+            )
+        elif "llama" in model_name.lower():
+            config = AutoConfig.from_pretrained(model_name)
+            config.quantization_config["disable_exllama"] = True
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name, device_map="auto", config=config, token=HF_TOKEN
+            )
+        elif "gemma" in model_name.lower():
+            model = Gemma3ForCausalLM.from_pretrained(
+                model_name, device_map="auto", token=HF_TOKEN
+            ).eval()
+        else:
+            raise ValueError(
+                "Unsupported model name {model_name}. Should be either Llama, Qwen, Gemma or Aya model."
+            )
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name, token=HF_TOKEN)
-    tokenizer.pad_token_id = tokenizer.eos_token_id
-    model.config.pad_token_id = tokenizer.pad_token_id
+        tokenizer = AutoTokenizer.from_pretrained(model_name, token=HF_TOKEN)
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+        model.config.pad_token_id = tokenizer.pad_token_id
 
     self_demonstrations = []
     self_annotations = []
@@ -218,45 +249,71 @@ def generate_demos(args):
         self_check_explanations_per_class = []
         self_check_annotations_per_class = []
 
-        pipeline = transformers.pipeline(
-            "text-generation",
-            model=model,
-            tokenizer=tokenizer,
-            model_kwargs={"torch_dtype": torch.bfloat16},
-        )
-
-        max_new_tokens = 128
-
-        prompt = pipeline.tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
-
-        terminators = [pipeline.tokenizer.eos_token_id]
-
-        if "aya" in model_name.lower():
-            terminators.append(pipeline.tokenizer.convert_tokens_to_ids("<|END_OF_TURN_TOKEN|>"))
-
-        elif "llama" in model_name.lower():
-            terminators.append(pipeline.tokenizer.convert_tokens_to_ids("<|eot_id|>"))
-
-        while len(self_demonstrations_per_class) < num_samples_to_generate:
-
-            outputs = pipeline(
-                prompt,
-                max_new_tokens=max_new_tokens,
-                eos_token_id=terminators,
-                do_sample=True,
-                temperature=0.6,
-                top_p=0.9,
+        if not use_vllm:
+            pipeline = transformers.pipeline(
+                "text-generation",
+                model=model,
+                tokenizer=tokenizer,
+                model_kwargs={"torch_dtype": torch.bfloat16},
             )
 
-            decoded = outputs[0]["generated_text"][len(prompt) :]
+            max_new_tokens = 128
+
+            prompt = pipeline.tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+
+            terminators = [pipeline.tokenizer.eos_token_id]
+
+            if "aya" in model_name.lower():
+                terminators.append(
+                    pipeline.tokenizer.convert_tokens_to_ids("<|END_OF_TURN_TOKEN|>")
+                )
+
+            elif "llama" in model_name.lower():
+                terminators.append(pipeline.tokenizer.convert_tokens_to_ids("<|eot_id|>"))
+        else:
+            pipeline = None
+            terminators = []
+
+        while len(self_demonstrations_per_class) < num_samples_to_generate:
+            if not use_vllm:
+                outputs = pipeline(
+                    prompt,
+                    max_new_tokens=max_new_tokens,
+                    eos_token_id=terminators,
+                    do_sample=True,
+                    temperature=0.6,
+                    top_p=0.9,
+                )
+
+                decoded = outputs[0]["generated_text"][len(prompt) :]
+            else:
+                decoded = (
+                    vllm_model.generate(
+                        messages[0]["content"] + " " + messages[1]["content"], vllm_sampling_params
+                    )[0]
+                    .outputs[0]
+                    .text
+                )
 
             try:
-                decoded = decoded.split("\n")
+                if "\n" in decoded:
+                    decoded = decoded.split("\n")
+                elif decoded.startswith("['"):
+                    if not decoded.endswith("']"):
+                        decoded = decoded + "']"
+                    decoded = ast.literal_eval(decoded)
+                elif decoded.startswith('["'):
+                    if not decoded.endswith('"]'):
+                        decoded = decoded + '"]'
+                    decoded = ast.literal_eval(decoded)
+
                 decoded = [item for item in decoded if len(item) > 0]
                 # skip the first one since it is typically "Here are x examples..."
-                decoded = decoded[1:]
+                if len(decoded) > 1:
+                    decoded = decoded[1:]
+
                 if verbose:
                     print("DECODED:", decoded)
                 demos_to_check = [
@@ -265,13 +322,16 @@ def generate_demos(args):
                     else item
                     for item in decoded
                 ]
+
                 demos_to_check = [
                     demo.replace("*", "").replace('"', "").replace("'", "")
                     for demo in demos_to_check
                     if valid_sample(demo)
                 ]
+
                 # the last entry is often truncated, thus we skip it
-                demos_to_check = list(set(demos_to_check[:-1]))
+                if len(set(demos_to_check)) > 1:
+                    demos_to_check = list(set(demos_to_check[:-1]))
 
                 if do_self_check:
                     new_demonstrations = []
@@ -283,6 +343,9 @@ def generate_demos(args):
                             label2explanation[class_name],
                             pipeline,
                             terminators,
+                            use_vllm,
+                            vllm_model,
+                            vllm_sampling_params,
                         )
                         if self_check_passed:
                             new_demonstrations.append(new_demo)
@@ -366,6 +429,7 @@ if __name__ == "__main__":
     parser.add_argument("--with_label_explanation", type=bool, default=False)
     parser.add_argument("--use_simple_explanations", type=bool, default=False)
     parser.add_argument("--do_self_check", type=bool, default=False)
+    parser.add_argument("--use_vllm", type=bool, default=False)
     parser.add_argument("--verbose", type=bool, default=False)
 
     args = parser.parse_args()
