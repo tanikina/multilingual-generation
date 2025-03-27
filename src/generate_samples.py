@@ -1,10 +1,13 @@
 import argparse
+import os
 import random
 import sys
-from os.path import abspath, dirname, isfile
+from os.path import abspath, basename, dirname, isfile
+from pathlib import Path
 
 import pandas as pd
 import torch
+from vllm import LLM, SamplingParams
 
 parent = dirname(dirname(abspath(__file__)))
 sys.path.append(parent)
@@ -12,13 +15,23 @@ sys.path.append(parent)
 import transformers
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
-from guided_decoding.gd_logit_processor import (
-    GuidedDecodingLogitsProcessor,
-    GuidedParser,
-)
-from guided_decoding.grammar import intent_grammar_10, intent_grammar_60
+from class_labels import MASSIVE10_LABELS, MASSIVE60_LABELS, SIB200_LABELS
 
 random.seed(2024)
+
+lang_name_map = {
+    "en-US": "English",
+    "de-DE": "German",
+    "th-TH": "Thai",
+    "he-IL": "Hebrew",
+    "id-ID": "Indonesian",
+    "sw-KE": "Swahili",
+    "ro-RO": "Romanian",
+    "az-AZ": "Azerbaijani",
+    "sl-SL": "Slovenian",
+    "te-IN": "Telugu",
+    "cy-GB": "Welsh",
+}
 
 HF_TOKEN = ""  # HuggingFace token to access the models
 hf_token_path = "src/hf_token.txt"
@@ -29,174 +42,92 @@ with open(hf_token_path) as f:
     if not (HF_TOKEN.startswith("hf_")):
         raise ValueError(f"Invalid HF_TOKEN: {HF_TOKEN}.")
 
+os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+os.environ["HF_TOKEN"] = HF_TOKEN
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def self_check(new_demo, language, class_name, class_description, pipeline, terminators):
+def self_check(
+    new_demo,
+    lang_name,
+    class_name,
+    class_description,
+    pipeline,
+    terminators,
+    use_vllm,
+    vllm_model,
+):
     messages = [
         {
             "role": "system",
-            "content": f"You are an excellent classifier and can reason whether a given sample in {language} belongs to the class {class_name} or not.",
+            "content": f"You are an excellent classifier and can reason whether a given sample in {lang_name} belongs to the class {class_name} or not.",
         },
         {
             "role": "user",
-            "content": f"Decide whether the following example belongs to the class {class_name} which means {class_description}. Answer yes if it belongs and represents a good sample (grammatically correct and complete) and no if it does not. Explain your answer in a concise way after generating yes or no. Input: {new_demo} Answer:",
+            "content": f"Decide whether the following example belongs to the class {class_name} which means {class_description}. Answer yes if it belongs and represents a good sample (grammatically correct and complete) and no if it does not. Answer no if the example is not in {lang_name}. Explain your answer in a concise way after generating yes or no. Input: {new_demo} Answer:",
         },
     ]
-    max_new_tokens = 42
-    if "deepseek" in pipeline.model.name_or_path:
-        max_new_tokens = 2000
-    #    system_content = messages[0]["content"]
-    #    messages = messages[1:]
-    #    messages[0]["content"] = system_content + " " + messages[0]["content"]
 
-    prompt = pipeline.tokenizer.apply_chat_template(
-        messages, tokenize=False, add_generation_prompt=True
-    )
-
-    outputs = pipeline(
-        prompt,
-        max_new_tokens=max_new_tokens,  # 5
-        eos_token_id=terminators,
-        do_sample=True,
-        temperature=0.6,
-        top_p=0.9,
-    )
-
-    decoded = outputs[0]["generated_text"]
-    if "deepseek" in pipeline.model.name_or_path:
-        if "</think>" in decoded:
-            decoded = decoded.split("</think>")[1].lower()
-    else:
-        decoded = decoded[len(prompt) :].lower()
-    print(decoded)
-    if "yes" in decoded:
-        return True
-    else:
-        return False
-
-
-def askLLM(message, tokenizer, model, parser, guided_preprocessor, classes):
-    message += "\nSelect one of the following labels: " + ", ".join(classes)
-    _input = tokenizer(message, return_tensors="pt")
-    input_ids = _input.input_ids.to(device)
-    response = ""
-
-    with torch.no_grad():
-        output = model.greedy_search(
-            input_ids=input_ids,
-            logits_processor=guided_preprocessor,
-            eos_token_id=parser.eos_token,
-            pad_token_id=model.config.pad_token_id,
+    if use_vllm:
+        self_check_sampling_params = SamplingParams(
+            temperature=0.1, top_p=0.95, repetition_penalty=1.2, max_tokens=248
         )
-        try:
-            response = tokenizer.decode(output[0]).split(message)[1]
-        except Exception as e:
-            response = classes[0]
-            print(f"Failed! {e}", tokenizer.decode(output[0]))
-    return response
+        decoded_outputs = vllm_model.generate(
+            messages[0]["content"] + " " + messages[1]["content"], self_check_sampling_params
+        )
+        decoded = decoded_outputs[0].outputs[0].text  # use single prompt!
+    else:
+        max_new_tokens = 64
+
+        prompt = pipeline.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+
+        outputs = pipeline(
+            prompt,
+            max_new_tokens=max_new_tokens,
+            eos_token_id=terminators,
+            do_sample=True,
+            temperature=0.6,
+            top_p=0.9,
+        )
+
+        decoded = outputs[0]["generated_text"]
+        decoded = decoded[len(prompt) :].lower().replace("\n", " ").strip()
+
+    if "yes" in decoded:
+        return (True, decoded)
+    else:
+        return (False, decoded)
 
 
 def valid_sample(demo):
     # this is just a heuristic to filter out sentences with unusual length
     if len(demo) < 10 or len(demo) > 100:
         return False
-    # we also filter out cases with invalid start (e.g. rephrasing prompt instructions etc)
-    for wrong_start in ["I", "Let", "Here", "First"]:
-        if demo.startswith(wrong_start):
-            return False
     return True
 
 
 def generate_demos(args):
     # prepare the parameters
-    generate_per_label = args.generate_per_label
     language = args.language
-    if args.num_classes == 10:
-        classes = [
-            "alarm_query",
-            "audio_volume_down",
-            "calendar_remove",
-            "cooking_recipe",
-            "datetime_convert",
-            "email_sendemail",
-            "play_audiobook",
-            "recommendation_movies",
-            "transport_ticket",
-            "weather_query",
-        ]
-        intent_grammar = intent_grammar_10
+    lang_name = lang_name_map[language]
+    if args.dataset == "massive10":
+        labels = MASSIVE10_LABELS
+    elif args.dataset == "massive60":
+        labels = MASSIVE60_LABELS
+    elif args.dataset == "sib-200":
+        labels = SIB200_LABELS
     else:
-        classes = [
-            "alarm_query",
-            "alarm_remove",
-            "alarm_set",
-            "audio_volume_down",
-            "audio_volume_mute",
-            "audio_volume_other",
-            "audio_volume_up",
-            "calendar_query",
-            "calendar_remove",
-            "calendar_set",
-            "cooking_query",
-            "cooking_recipe",
-            "datetime_convert",
-            "datetime_query",
-            "email_addcontact",
-            "email_query",
-            "email_querycontact",
-            "email_sendemail",
-            "general_greet",
-            "general_joke",
-            "general_quirky",
-            "iot_cleaning",
-            "iot_coffee",
-            "iot_hue_lightchange",
-            "iot_hue_lightdim",
-            "iot_hue_lightoff",
-            "iot_hue_lighton",
-            "iot_hue_lightup",
-            "iot_wemo_off",
-            "iot_wemo_on",
-            "lists_createoradd",
-            "lists_query",
-            "lists_remove",
-            "music_dislikeness",
-            "music_likeness",
-            "music_query",
-            "music_settings",
-            "news_query",
-            "play_audiobook",
-            "play_game",
-            "play_music",
-            "play_podcasts",
-            "play_radio",
-            "qa_currency",
-            "qa_definition",
-            "qa_factoid",
-            "qa_maths",
-            "qa_stock",
-            "recommendation_events",
-            "recommendation_locations",
-            "recommendation_movies",
-            "social_post",
-            "social_query",
-            "takeaway_order",
-            "takeaway_query",
-            "transport_query",
-            "transport_taxi",
-            "transport_ticket",
-            "transport_traffic",
-            "weather_query",
-        ]
-        intent_grammar = intent_grammar_60
+        raise ValueError(f"Unknown dataset {args.dataset}")
 
     input_path = args.input_path
     output_path = args.output_path
-    df = pd.read_csv(input_path, delimiter="\t")
+    df = pd.read_csv(input_path)
     demo_texts = list(df["text"])
     demo_labels = list(df["intent"])
-    selected_texts = []
+
     class2demos = dict()
     if args.use_translated_demos:
         # read the prepared translations
@@ -205,56 +136,88 @@ def generate_demos(args):
         )  # "demo_centroids.csv" are based on GoogleTranslate, otherwise we use ChatGPT translations
         demo_texts = df_translated_demos[0].to_list()
         demo_labels = df_translated_demos[1].to_list()
+    elif args.use_english_demos:
+        # read English data
+        lang_code = args.language.split("-")[0]
+        df_english_demos = pd.read_csv(
+            input_path.replace(basename(input_path), "en-US_train.csv").replace(
+                f"/{lang_code}-", "/en-"
+            )
+        )
+        demo_texts = df_english_demos["text"]
+        demo_labels = df_english_demos["intent"]
+
     for txt, lbl in zip(demo_texts, demo_labels):
-        if lbl in classes:
-            selected_texts.append(txt)
+        if lbl in labels:
             if lbl not in class2demos:
                 class2demos[lbl] = []
             class2demos[lbl].append(txt)
-    random.shuffle(selected_texts)
 
-    threshold = args.unlabeled_samples_threshold
-    num_self_demonstrations = args.num_self_demonstrations
-    num_gold_demos = args.num_gold_demos
+    num_samples_to_generate = (
+        args.num_samples_to_generate + 2
+    )  # because we remove the first and the last ones
+    threshold_per_class = args.num_samples_to_generate
+    num_input_demos = args.num_input_demos
 
     do_self_check = args.do_self_check
+    use_vllm = args.use_vllm
     with_label_explanation = args.with_label_explanation
     use_simple_explanations = args.use_simple_explanations
-    use_gold_demos = args.use_gold_demos
-    unlabeled_examples = "\n".join(selected_texts[:threshold])
 
     model_name = args.model_name
     verbose = args.verbose
 
     # Generation
 
-    if "aya" in model_name.lower():
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name, torch_dtype="auto", device_map="auto", token=HF_TOKEN
-        )
-    elif "deepseek" in model_name.lower():
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name, device_map="auto", trust_remote_code=True, token=HF_TOKEN
-        )
-    elif "qwen" in model_name.lower():
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", token=HF_TOKEN)
-    elif "llama" in model_name.lower():
-        config = AutoConfig.from_pretrained(model_name)
-        config.quantization_config["disable_exllama"] = True
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name, device_map="auto", config=config, token=HF_TOKEN
+    if use_vllm:
+        vllm_model = LLM(model=model_name, tensor_parallel_size=1, max_model_len=4096)
+        vllm_sampling_params = SamplingParams(
+            temperature=0.1, top_p=0.95, repetition_penalty=1.2, max_tokens=512
         )
     else:
-        raise ValueError(
-            "Unsupported model name {model_name}. Should be either Llama, Qwen or Aya model."
-        )
+        if "aya" in model_name.lower():
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                torch_dtype="auto",
+                device_map="auto",
+            )
+        elif "qwen" in model_name.lower():
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name, device_map="auto", token=HF_TOKEN
+            )
+        elif "llama" in model_name.lower():
+            config = AutoConfig.from_pretrained(model_name)
+            config.quantization_config["disable_exllama"] = True
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                device_map="auto",
+                config=config,
+            )
+        elif "gemma" in model_name.lower():
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                device_map="auto",
+            ).eval()
+        else:
+            raise ValueError(
+                "Unsupported model name {model_name}. Should be either Llama, Qwen, Gemma or Aya model."
+            )
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.pad_token_id = tokenizer.eos_token_id
-    model.config.pad_token_id = tokenizer.pad_token_id
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+        model.config.pad_token_id = tokenizer.pad_token_id
+
+        vllm_model = None
+        vllm_sampling_params = None
 
     self_demonstrations = []
     self_annotations = []
+
+    # storing unfiltered responses when using self-check
+    self_demonstrations_non_revised = []
+    self_annotations_non_revised = []
+    self_check_explanations = []
+    self_check_annotations = []
 
     label2explanation = dict()
     if use_simple_explanations:
@@ -262,77 +225,68 @@ def generate_demos(args):
     else:
         explanation_fname = "src/utils/intent2description_summarized.csv"
     df_explanations = pd.read_csv(explanation_fname)
-    labels = df_explanations["intent"].to_list()
+    exp_labels = df_explanations["intent"].to_list()
     explanations = df_explanations["description"].to_list()
-    for label, explanation in zip(labels, explanations):
+    for label, explanation in zip(exp_labels, explanations):
         label2explanation[label] = explanation
 
-    if generate_per_label:
-        for class_name in classes:
-            if use_gold_demos:
-                class_demos = class2demos[class_name]
-                random.shuffle(class_demos)
-                class_demos = class_demos[:num_gold_demos]
-                examples = class_demos
-                diff_labels = ""
-                but = ""
-            else:
-                examples = unlabeled_examples
-                diff_labels = " (with different labels)"
-                but = " but"
+    for class_name in labels:
+        class_demos = class2demos[class_name]
+        random.shuffle(class_demos)
+        class_demos = class_demos[:num_input_demos]
+        examples = class_demos
 
-            if with_label_explanation:
-                added_explanation = (
-                    f"which has the following meaning: {label2explanation[class_name]}"
-                )
-            else:
-                added_explanation = ""
-            if len(examples) > 0:
-                self_generation_prompt = f"You are required to produce {num_self_demonstrations} examples in {language} that can have the label: {class_name} {added_explanation} Note that some examples from the dataset{diff_labels} look as follows:\nExamples:\n{examples}\nNow generate {num_self_demonstrations} similar examples{but} for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name}.\nGenerated examples for label {class_name}:\n"
-            else:
-                self_generation_prompt = f"You are required to produce {num_self_demonstrations} examples in {language} that can have the label: {class_name} {added_explanation}. Generate {num_self_demonstrations} examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name}.\nGenerated examples for label {class_name}:\n"
+        if with_label_explanation:
+            added_explanation = f"which has the following meaning: {label2explanation[class_name]}"
+        else:
+            added_explanation = ""
+        if len(examples) > 0:
+            self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {lang_name} that can have the label: {class_name} {added_explanation} Note that some examples from the dataset look as follows:\nExamples:\n{examples}\nNow generate {num_samples_to_generate} similar examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name} and do not repeat the instruction.\nGenerated examples for label {class_name}:\n"
+        else:
+            self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {lang_name} that can have the label: {class_name} {added_explanation}. Generate {num_samples_to_generate} examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name} and do not repeat the instruction.\nGenerated examples for label {class_name}:\n"
 
-            messages = [
-                {
-                    "role": "system",
-                    "content": f"You are an excellent text generator and can generate representative text samples for the given class in {language}.",
-                },
-                {"role": "user", "content": self_generation_prompt},
-            ]
+        messages = [
+            {
+                "role": "system",
+                "content": f"You are an excellent text generator and can generate representative text samples for the given class in {lang_name}.",
+            },
+            {"role": "user", "content": self_generation_prompt},
+        ]
 
-            self_demonstrations_per_class = []
+        self_demonstrations_per_class = []
+        self_demonstrations_per_class_non_revised = []
+        self_check_explanations_per_class = []
+        self_check_annotations_per_class = []
 
-            while len(self_demonstrations_per_class) < num_self_demonstrations:
+        if not use_vllm:
+            pipeline = transformers.pipeline(
+                "text-generation",
+                model=model,
+                tokenizer=tokenizer,
+                model_kwargs={"torch_dtype": torch.bfloat16},
+            )
 
-                pipeline = transformers.pipeline(
-                    "text-generation",
-                    model=model,
-                    tokenizer=tokenizer,
-                    model_kwargs={"torch_dtype": torch.bfloat16},
-                )
+            max_new_tokens = 128
 
-                max_new_tokens = 128
-                if "deepseek" in model_name.lower():
-                    max_new_tokens = 2500
-                    # if "deepseek" in pipeline.model.name_or_path:
-                    #    system_content = messages[0]["content"]
-                    #    messages = messages[1:]
-                    #    messages[0]["content"] = system_content + " " + messages[0]["content"]
+            prompt = pipeline.tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
 
-                prompt = pipeline.tokenizer.apply_chat_template(
-                    messages, tokenize=False, add_generation_prompt=True
+            terminators = [pipeline.tokenizer.eos_token_id]
+
+            if "aya" in model_name.lower():
+                terminators.append(
+                    pipeline.tokenizer.convert_tokens_to_ids("<|END_OF_TURN_TOKEN|>")
                 )
 
-                terminators = [pipeline.tokenizer.eos_token_id]
+            elif "llama" in model_name.lower():
+                terminators.append(pipeline.tokenizer.convert_tokens_to_ids("<|eot_id|>"))
+        else:
+            pipeline = None
+            terminators = []
 
-                if "aya" in model_name.lower():
-                    terminators.append(
-                        pipeline.tokenizer.convert_tokens_to_ids("<|END_OF_TURN_TOKEN|>")
-                    )
-
-                elif "llama" in model_name.lower():
-                    terminators.append(pipeline.tokenizer.convert_tokens_to_ids("<|eot_id|>"))
-
+        while len(self_demonstrations_per_class) < threshold_per_class:
+            if not use_vllm:
                 outputs = pipeline(
                     prompt,
                     max_new_tokens=max_new_tokens,
@@ -343,153 +297,100 @@ def generate_demos(args):
                 )
 
                 decoded = outputs[0]["generated_text"][len(prompt) :]
-                if verbose:
-                    print("DECODED before split:", decoded)
-
-                try:
-                    if "</think>" in decoded:  # if using DeepSeek model
-                        split = decoded.split("</think>")
-                        if len(split) > 1:
-                            decoded = split[1].strip()
-                    decoded = decoded.split("\n")[:num_self_demonstrations]
-                    decoded = [item for item in decoded if len(item) > 0]
-                    # skip the first one since it is typically "Here are x examples..."
-                    decoded = decoded[1:]
-                    if verbose:
-                        print("DECODED after split:", decoded)
-                    demos_to_check = [
-                        item[item.index(" ") + 1 :]
-                        if item[0].replace(".", "").isdigit() and " " in item
-                        else item
-                        for item in decoded
-                    ]
-                    demos_to_check = [
-                        demo.replace("*", "").replace('"', "")
-                        for demo in demos_to_check
-                        if valid_sample(demo)
-                    ]
-                    if do_self_check:
-                        new_demonstrations = []
-                        for new_demo in demos_to_check:
-                            if self_check(
-                                new_demo,
-                                language,
-                                class_name,
-                                label2explanation[class_name],
-                                pipeline,
-                                terminators,
-                            ):
-                                new_demonstrations.append(new_demo)
-                                if verbose:
-                                    print(
-                                        "Good example (based on self-check):", new_demo, class_name
-                                    )
-                            else:
-                                if verbose:
-                                    print(
-                                        "Bad example (based on self-check):", new_demo, class_name
-                                    )
-                    else:
-                        new_demonstrations = demos_to_check
-                    self_demonstrations_per_class.extend(new_demonstrations)
-                except Exception as e:
-                    print("Failed decoding!", e)
-                    continue
-
-            self_demonstrations_per_class = self_demonstrations_per_class[:num_self_demonstrations]
-
-            self_demonstrations.extend(self_demonstrations_per_class)
-            for i in range(len(self_demonstrations_per_class)):
-                self_annotations.append(class_name)
-
-            if len(self_annotations) != len(self_demonstrations):
-                raise ValueError(
-                    f"Mismatch per class! {len(self_annotations)} annotations and {len(self_demonstrations)} demonstrations."
-                )
-    else:
-        if use_gold_demos:
-            demo_examples = ""
-            for cls in class2demos:
-                demo_examples += (
-                    "Label: "
-                    + cls
-                    + " Samples: "
-                    + ", ".join(class2demos[cls][:num_gold_demos])
-                    + " "
-                )
-        else:
-            demo_examples = "\n".join(selected_texts[:threshold])
-
-        if with_label_explanation:
-            classes_str = ""
-            for cls in classes:
-                classes_str += cls + ": " + label2explanation[cls] + ", "
-            classes_str = classes_str[:-2]
-        else:
-            classes_str = ", ".join(classes)
-
-        self_generation_prompt = f"You are required to produce {num_self_demonstrations} examples in {language} with labels for the task of intent classification. The task is to classify a sentence using one of the following classes: {classes_str}. Note that {threshold} of the labeled samples in the dataset are as follows:\nExamples:\n{demo_examples}\nNow generate {num_self_demonstrations} similar examples with each example on a new line.\nExamples:\n"
-        input_ids = tokenizer(self_generation_prompt, return_tensors="pt").input_ids.to(device)
-
-        max_new_tokens = 512
-        if "deepseek" in model_name.lower():
-            max_new_tokens = 2500
-
-        while len(self_demonstrations) < num_self_demonstrations:
-            with torch.no_grad():
-                output = model.generate(
-                    input_ids=input_ids,
-                    temperature=0.7,
-                    do_sample=True,
-                    top_p=0.95,
-                    top_k=40,
-                    max_new_tokens=512,
+            else:
+                decoded = (
+                    vllm_model.generate(
+                        messages[0]["content"] + " " + messages[1]["content"], vllm_sampling_params
+                    )[0]
+                    .outputs[0]
+                    .text
                 )
 
-            decoded = tokenizer.decode(output[0])
             try:
-                decoded = decoded[len(self_generation_prompt) :].split("\n")[
-                    :num_self_demonstrations
-                ]
-                decoded = [item for item in decoded if len(item) > 0]
+                if "\n" in decoded:
+                    decoded = decoded.split("\n")
+                else:
+                    if "', '" in decoded:
+                        decoded = decoded.split("', '")
+                    elif '", "' in decoded:
+                        decoded = decoded.split('", "')
+
                 decoded = [
+                    item.replace("'", "").replace('"', "") for item in decoded if len(item) > 0
+                ]
+                # skip the first one since it is typically "Here are x examples..."
+                if len(decoded) > 1:
+                    decoded = decoded[1:]
+
+                if verbose:
+                    print("DECODED:", decoded)
+                demos_to_check = [
                     item[item.index(" ") + 1 :]
                     if item[0].replace(".", "").isdigit() and " " in item
                     else item
                     for item in decoded
                 ]
+
+                demos_to_check = [
+                    demo.replace("*", "").replace('"', "").replace("'", "")
+                    for demo in demos_to_check
+                    if valid_sample(demo)
+                ]
+
+                # the last entry is often truncated, thus we skip it
+                if len(set(demos_to_check)) > 1:
+                    demos_to_check = list(set(demos_to_check[:-1]))
+
+                if do_self_check:
+                    new_demonstrations = []
+                    for new_demo in demos_to_check:
+                        self_check_passed, self_check_verdict = self_check(
+                            new_demo,
+                            lang_name,
+                            class_name,
+                            label2explanation[class_name],
+                            pipeline,
+                            terminators,
+                            use_vllm,
+                            vllm_model,
+                        )
+                        if self_check_passed:
+                            new_demonstrations.append(new_demo)
+                            self_check_annotations_per_class.append(1)
+                        else:
+                            self_check_annotations_per_class.append(0)
+                        self_check_explanations_per_class.append(self_check_verdict)
+                else:
+                    new_demonstrations = demos_to_check
+                self_demonstrations_per_class.extend(new_demonstrations)
+                # add non-revised demonstrations to keep the same samples
+                if do_self_check:
+                    self_demonstrations_per_class_non_revised.extend(demos_to_check)
             except Exception as e:
                 print("Failed decoding!", e)
-            self_demonstrations.extend(decoded)
-            self_demonstrations = list(set(self_demonstrations))
-        self_demonstrations = self_demonstrations[:num_self_demonstrations]
+                continue
 
-        # self-annotation with GuidedDecoding
-        parser = GuidedParser(
-            intent_grammar, tokenizer, model="gpt", eos_token=tokenizer.encode(" [e]")[-1]
-        )
-        guided_preprocessor = GuidedDecodingLogitsProcessor(parser, input_ids.shape[1])
+        self_demonstrations_per_class = self_demonstrations_per_class[:threshold_per_class]
+        self_demonstrations.extend(self_demonstrations_per_class)
+        for i in range(len(self_demonstrations_per_class)):
+            self_annotations.append(class_name)
 
-        for demo_text in self_demonstrations:
-            message = (
-                "Generate a label from the following list: "
-                + " ".join(classes)
-                + "\nInput text: "
-                + demo_text
-                + "\nLabel: "
-            )
-            not_labeled = True
-            while not_labeled:
-                label_tokens = askLLM(
-                    message, tokenizer, model, parser, guided_preprocessor, classes
-                ).split()
-                for label_token in label_tokens:
-                    if label_token in classes:
-                        self_annotations.append(label_token)
-                        if verbose:
-                            print(demo_text, ">>>", label_token)
-                        not_labeled = False
-                        break
+        # with self-check we store both the "checked" and the originally generated samples with explanations
+        if do_self_check:
+            self_demonstrations_per_class_non_revised = self_demonstrations_per_class_non_revised[
+                :threshold_per_class
+            ]
+            self_check_explanations_per_class = self_check_explanations_per_class[
+                :threshold_per_class
+            ]
+            self_check_annotations_per_class = self_check_annotations_per_class[
+                :threshold_per_class
+            ]
+            self_demonstrations_non_revised.extend(self_demonstrations_per_class_non_revised)
+            self_check_explanations.extend(self_check_explanations_per_class)
+            self_check_annotations.extend(self_check_annotations_per_class)
+            for i in range(len(self_demonstrations_per_class_non_revised)):
+                self_annotations_non_revised.append(class_name)
 
         if len(self_annotations) != len(self_demonstrations):
             raise ValueError(
@@ -501,29 +402,42 @@ def generate_demos(args):
         print("Output:", self_demonstrations)
 
     # write into file
-    df = pd.DataFrame(data={"text": self_demonstrations, "anno": self_annotations})
-    df.to_csv(output_path, index=False, header=False)
+    df = pd.DataFrame(data={"text": self_demonstrations, "intent": self_annotations})
+    Path(output_path).parent.absolute().mkdir(parents=True, exist_ok=True)
+    df.to_csv(output_path, index=True, header=True)
+
+    if do_self_check:
+        df_non_revised = pd.DataFrame(
+            data={
+                "text": self_demonstrations_non_revised,
+                "intent": self_annotations_non_revised,
+                "explanation": self_check_explanations,
+                "verdict": self_check_annotations,
+            }
+        )
+        df_non_revised.to_csv(
+            output_path.replace(".csv", "_with-rejected.csv"), index=True, header=True
+        )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Training parameters.")
-    parser.add_argument("--language", type=str)
+    parser.add_argument("--language", type=str, choices=list(lang_name_map.keys()))
     parser.add_argument("--input_path", type=str)
     parser.add_argument("--output_path", type=str)
 
-    parser.add_argument("--generate_per_label", type=bool, default=False)
-    parser.add_argument("--num_classes", type=int, default=10)
+    parser.add_argument("--dataset", type=str, default="massive10")
     parser.add_argument(
         "--model_name", type=str, default="TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ"
     )
-    parser.add_argument("--unlabeled_samples_threshold", type=int, default=20)
-    parser.add_argument("--num_self_demonstrations", type=int, default=20)
-    parser.add_argument("--use_gold_demos", type=bool, default=False)
+    parser.add_argument("--num_samples_to_generate", type=int, default=100)
+    parser.add_argument("--num_input_demos", type=int, default=10)
+    parser.add_argument("--use_english_demos", type=bool, default=False)
     parser.add_argument("--use_translated_demos", type=bool, default=False)
-    parser.add_argument("--num_gold_demos", type=int, default=2)
     parser.add_argument("--with_label_explanation", type=bool, default=False)
     parser.add_argument("--use_simple_explanations", type=bool, default=False)
     parser.add_argument("--do_self_check", type=bool, default=False)
+    parser.add_argument("--use_vllm", type=bool, default=False)
     parser.add_argument("--verbose", type=bool, default=False)
 
     args = parser.parse_args()

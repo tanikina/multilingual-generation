@@ -374,9 +374,9 @@ def main(args):
         class_grammar, tokenizer, model="gpt", eos_token=tokenizer.encode(" [e]")[-1]
     )
 
-    df = pd.read_csv(test_data_path, sep="\t")
+    df = pd.read_csv(test_data_path, sep=",")
     instances = df["text"]
-    gold_labels = [idx2label[lbl] for lbl in df["labels"]]
+    gold_labels = [idx2label[lbl] for lbl in df["intent"]]
 
     # generate labels with GD
     gen_labels = []
@@ -428,7 +428,7 @@ def main(args):
     # save generated labels in a file
     res_dict = {"text": instances, "labels": gen_labels}
     df = pd.DataFrame.from_dict(res_dict)
-    df.to_csv(args.output_fname)
+    df.to_csv(args.output_fname, index=False)
 
 
 if __name__ == "__main__":

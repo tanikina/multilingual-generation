@@ -34,9 +34,9 @@ def find_demos(input_file, given_class_labels, threshold_per_class, method, prin
     demo_labels = []
 
     # Filter out relevant class labels
-    df = pd.read_csv(input_file, sep="\t")
-    texts = df.text  # list(df[0])
-    labels = df.intent  # list(df[1])
+    df = pd.read_csv(input_file, sep=",")
+    texts = df.text
+    labels = df.intent
     label2samples = dict()
     sample2label = dict()
     for txt, lbl in zip(texts, labels):

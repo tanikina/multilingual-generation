@@ -100,29 +100,23 @@ def create_data(
     val_proportion=0.25,
     num_labels=10,
     max_per_label=100,
-    use_gold_train_data=False,
 ):
     test_texts, test_labels = get_text_and_labels(
         os.path.join(data_path, lang + "_test.csv"),
         skip_header=True,
         skip_index=True,
-        separator="\t",
+        separator=",",
     )
-    if use_gold_train_data:
-        skip_index = True
-        separator = "\t"
-    else:
-        skip_index = False
-        separator = ","
     orig_train_texts, orig_train_labels = get_text_and_labels(
         train_path,
         collect_by_label=True,
         max_per_label=max_per_label,
         do_shuffle=True,
-        skip_header=False,
-        skip_index=skip_index,
-        separator=separator,
+        skip_header=True,
+        skip_index=True,
+        separator=",",
     )
+
     val_limit = round(len(orig_train_texts) * val_proportion)
     train_texts = orig_train_texts[val_limit:]
     train_labels = orig_train_labels[val_limit:]
@@ -148,6 +142,8 @@ def create_data(
         val_labels = new_val_labels
 
     # write into files
+    os.makedirs("data/prepared_data", exist_ok=True)
+
     df = pd.DataFrame.from_dict({"text": test_texts, "labels": test_labels})
     df.to_csv("data/prepared_data/test_" + lang + ".tsv", sep="\t")
 
@@ -251,6 +247,7 @@ def evaluate(model, test_loader, test_set, criterion, setting, language):
     cmd.plot(xticks_rotation="vertical")
     fig = cmd.figure_
     fig.tight_layout()
+    os.makedirs("figures", exist_ok=True)
     fig_fname = "figures/" + language + "_" + setting.split("/")[-1]
     fig.savefig(fig_fname.replace(".csv", ".png"))
 
@@ -274,18 +271,16 @@ def main(args):
     lang_prefix = lang.split("-")[0]
     num_labels = len(intent_labels)  # 10
     max_per_label = args.max_per_label  # 10
-    use_gold_train_data = False  # use generated data
 
     train_path = args.train_path
     model_name = lang_prefix + "_" + model_name
 
     create_data(
-        data_path="data/massive-" + lang_prefix,
+        data_path="data/" + lang_prefix + "-massive",
         train_path=train_path,
         lang=lang,
         num_labels=num_labels,
         max_per_label=max_per_label,
-        use_gold_train_data=use_gold_train_data,
     )
     train_set = Dataset.from_csv("data/prepared_data/train_" + lang + ".tsv", delimiter="\t")
     train_set = train_set.map(tokenize_function, batched=True, batch_size=batch_size)
