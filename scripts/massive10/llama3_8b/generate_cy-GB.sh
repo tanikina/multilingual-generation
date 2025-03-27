@@ -1,9 +1,9 @@
 #!/bin/sh
 echo only_summarized_intent
 python src/generate_samples.py \
---language=de-DE \
---input_path=data/de-massive/de-DE_train.csv \
---output_path=data/generated/massive10/llama3_8b/de-DE_only_summarized_intent.csv \
+--language=cy-GB \
+--input_path=data/de-massive/cy-GB_train.csv \
+--output_path=data/generated/massive10/llama3_8b/cy-GB_only_summarized_intent.csv \
 --dataset=massive10 \
 --model_name=TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ \
 --num_samples_to_generate=100 \
@@ -12,9 +12,9 @@ python src/generate_samples.py \
 --use_vllm=True
 echo summarized_intent_with_10_target_lang_demos
 python src/generate_samples.py \
---language=de-DE \
---input_path=data/de-massive/de-DE_train.csv \
---output_path=data/generated/massive10/llama3_8b/de-DE_summarized_intent_with_10_target_lang_demos.csv \
+--language=cy-GB \
+--input_path=data/de-massive/cy-GB_train.csv \
+--output_path=data/generated/massive10/llama3_8b/cy-GB_summarized_intent_with_10_target_lang_demos.csv \
 --dataset=massive10 \
 --model_name=TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ \
 --num_samples_to_generate=100 \
@@ -23,9 +23,9 @@ python src/generate_samples.py \
 --use_vllm=True
 echo summarized_intent_with_10_english_demos
 python src/generate_samples.py \
---language=de-DE \
---input_path=data/de-massive/de-DE_train.csv \
---output_path=data/generated/massive10/llama3_8b/de-DE_summarized_intent_with_10_english_demos \
+--language=cy-GB \
+--input_path=data/de-massive/cy-GB_train.csv \
+--output_path=data/generated/massive10/llama3_8b/cy-GB_summarized_intent_with_10_english_demos \
 --dataset=massive10 \
 --model_name=TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ \
 --num_samples_to_generate=100 \
@@ -35,9 +35,9 @@ python src/generate_samples.py \
 --use_vllm=True
 echo summarized_intent_with_10_target_lang_demos_and_revision
 python src/generate_samples.py \
---language=de-DE \
---input_path=data/de-massive/de-DE_train.csv \
---output_path=data/generated/massive10/llama3_8b/de-DE_summarized_intent_with_10_target_lang_demos_and_revision \
+--language=cy-GB \
+--input_path=data/de-massive/cy-GB_train.csv \
+--output_path=data/generated/massive10/llama3_8b/cy-GB_summarized_intent_with_10_target_lang_demos_and_revision \
 --dataset=massive10 \
 --model_name=TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ \
 --num_samples_to_generate=100 \
