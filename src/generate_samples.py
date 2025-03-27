@@ -18,7 +18,6 @@ from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
     AutoTokenizer,
-    Gemma3ForCausalLM,
 )
 
 from class_labels import MASSIVE10_LABELS, MASSIVE60_LABELS, SIB200_LABELS
@@ -200,7 +199,7 @@ def generate_demos(args):
                 config=config,
             )
         elif "gemma" in model_name.lower():
-            model = Gemma3ForCausalLM.from_pretrained(
+            model = AutoModelForCausalLM.from_pretrained(
                 model_name,
                 device_map="auto",
             ).eval()
