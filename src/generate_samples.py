@@ -1,5 +1,4 @@
 import argparse
-import ast
 import os
 import random
 import sys
@@ -307,16 +306,13 @@ def generate_demos(args):
             try:
                 if "\n" in decoded:
                     decoded = decoded.split("\n")
-                elif decoded.startswith("['"):
-                    if not decoded.endswith("']"):
-                        decoded = decoded + "']"
-                    decoded = ast.literal_eval(decoded)
-                elif decoded.startswith('["'):
-                    if not decoded.endswith('"]'):
-                        decoded = decoded + '"]'
-                    decoded = ast.literal_eval(decoded)
+                else:
+                    if "', '" in decoded:
+                        decoded = decoded.split("', '")
+                    elif '", "' in decoded:
+                        decoded = decoded.split('", "')
 
-                decoded = [item for item in decoded if len(item) > 0]
+                decoded = [item.replace("'","").replace('"',"") for item in decoded if len(item) > 0]
                 # skip the first one since it is typically "Here are x examples..."
                 if len(decoded) > 1:
                     decoded = decoded[1:]
