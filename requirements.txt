@@ -1,5 +1,5 @@
 torch==2.6.0
-transformers @ git+https://github.com/huggingface/transformers@v4.49.0-Gemma-3
+transformers==4.50.2
 auto-gptq==0.7.1
 accelerate
 optimum
