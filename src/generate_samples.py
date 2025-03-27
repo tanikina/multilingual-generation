@@ -59,8 +59,6 @@ def self_check(new_demo, lang_name, class_name, class_description, pipeline, ter
         },
     ]
     max_new_tokens = 64
-    if "deepseek" in pipeline.model.name_or_path:
-        max_new_tokens = 2000
 
     prompt = pipeline.tokenizer.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True
@@ -76,13 +74,7 @@ def self_check(new_demo, lang_name, class_name, class_description, pipeline, ter
     )
 
     decoded = outputs[0]["generated_text"]
-    if "deepseek" in pipeline.model.name_or_path:
-        if "</think>" in decoded:
-            decoded = decoded.split("</think>")[1].lower()
-    else:
-        decoded = decoded[len(prompt) :].lower()
-
-    decoded = decoded.replace("\n", " ").strip()
+    decoded = decoded[len(prompt) :].lower().replace("\n", " ").strip()
 
     if "yes" in decoded:
         return (True, decoded)
@@ -156,10 +148,6 @@ def generate_demos(args):
     if "aya" in model_name.lower():
         model = AutoModelForCausalLM.from_pretrained(
             model_name, torch_dtype="auto", device_map="auto", token=HF_TOKEN
-        )
-    elif "deepseek" in model_name.lower():
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name, device_map="auto", trust_remote_code=True, token=HF_TOKEN
         )
     elif "qwen" in model_name.lower():
         model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", token=HF_TOKEN)
@@ -238,8 +226,6 @@ def generate_demos(args):
         )
 
         max_new_tokens = 128
-        if "deepseek" in model_name.lower():
-            max_new_tokens = 2500
 
         prompt = pipeline.tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
@@ -267,10 +253,6 @@ def generate_demos(args):
             decoded = outputs[0]["generated_text"][len(prompt) :]
 
             try:
-                if "</think>" in decoded:  # if using DeepSeek model
-                    split = decoded.split("</think>")
-                    if len(split) > 1:
-                        decoded = split[1].strip()
                 decoded = decoded.split("\n")
                 decoded = [item for item in decoded if len(item) > 0]
                 # skip the first one since it is typically "Here are x examples..."
