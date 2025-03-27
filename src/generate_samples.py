@@ -14,11 +14,7 @@ parent = dirname(dirname(abspath(__file__)))
 sys.path.append(parent)
 
 import transformers
-from transformers import (
-    AutoConfig,
-    AutoModelForCausalLM,
-    AutoTokenizer,
-)
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 from class_labels import MASSIVE10_LABELS, MASSIVE60_LABELS, SIB200_LABELS
 
