@@ -25,7 +25,7 @@ echo summarized_intent_with_10_english_demos
 python src/generate_samples.py \
 --language=sw-KE \
 --input_path=data/de-massive/sw-KE_train.csv \
---output_path=data/generated/massive10/gemma3_27b/sw-KE_summarized_intent_with_10_english_demos \
+--output_path=data/generated/massive10/gemma3_27b/sw-KE_summarized_intent_with_10_english_demos.csv \
 --dataset=massive10 \
 --model_name=google/gemma-3-27b-it \
 --num_samples_to_generate=100 \
@@ -37,7 +37,7 @@ echo summarized_intent_with_10_target_lang_demos_and_revision
 python src/generate_samples.py \
 --language=sw-KE \
 --input_path=data/de-massive/sw-KE_train.csv \
---output_path=data/generated/massive10/gemma3_27b/sw-KE_summarized_intent_with_10_target_lang_demos_and_revision \
+--output_path=data/generated/massive10/gemma3_27b/sw-KE_summarized_intent_with_10_target_lang_demos_and_revision.csv \
 --dataset=massive10 \
 --model_name=google/gemma-3-27b-it \
 --num_samples_to_generate=100 \
