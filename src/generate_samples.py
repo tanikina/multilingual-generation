@@ -207,6 +207,9 @@ def generate_demos(args):
         tokenizer.pad_token_id = tokenizer.eos_token_id
         model.config.pad_token_id = tokenizer.pad_token_id
 
+        vllm_model = None
+        vllm_sampling_params = None
+
     self_demonstrations = []
     self_annotations = []
 
