@@ -4,6 +4,7 @@ import os
 import random
 import sys
 from os.path import abspath, basename, dirname, isfile
+from pathlib import Path
 
 import pandas as pd
 import torch
@@ -21,8 +22,6 @@ from transformers import (
 )
 
 from class_labels import MASSIVE10_LABELS, MASSIVE60_LABELS, SIB200_LABELS
-
-os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
 
 random.seed(2024)
 
@@ -49,6 +48,9 @@ with open(hf_token_path) as f:
     if not (HF_TOKEN.startswith("hf_")):
         raise ValueError(f"Invalid HF_TOKEN: {HF_TOKEN}.")
 
+os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+os.environ["HF_TOKEN"] = HF_TOKEN
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -61,7 +63,6 @@ def self_check(
     terminators,
     use_vllm,
     vllm_model,
-    vllm_sampling_params,
 ):
     messages = [
         {
@@ -75,8 +76,11 @@ def self_check(
     ]
 
     if use_vllm:
+        self_check_sampling_params = SamplingParams(
+            temperature=0.1, top_p=0.95, repetition_penalty=1.2, max_tokens=248
+        )
         decoded_outputs = vllm_model.generate(
-            messages[0]["content"] + " " + messages[1]["content"], vllm_sampling_params
+            messages[0]["content"] + " " + messages[1]["content"], self_check_sampling_params
         )
         decoded = decoded_outputs[0].outputs[0].text  # use single prompt!
     else:
@@ -158,6 +162,7 @@ def generate_demos(args):
     num_samples_to_generate = (
         args.num_samples_to_generate + 2
     )  # because we remove the first and the last ones
+    threshold_per_class = args.num_samples_to_generate
     num_input_demos = args.num_input_demos
 
     do_self_check = args.do_self_check
@@ -171,12 +176,16 @@ def generate_demos(args):
     # Generation
 
     if use_vllm:
-        vllm_model = LLM(model=model_name, tensor_parallel_size=1, max_model_len=2048)
-        vllm_sampling_params = SamplingParams(temperature=0.8, top_p=0.95)
+        vllm_model = LLM(model=model_name, tensor_parallel_size=1, max_model_len=4096)
+        vllm_sampling_params = SamplingParams(
+            temperature=0.1, top_p=0.95, repetition_penalty=1.2, max_tokens=512
+        )
     else:
         if "aya" in model_name.lower():
             model = AutoModelForCausalLM.from_pretrained(
-                model_name, torch_dtype="auto", device_map="auto", token=HF_TOKEN
+                model_name,
+                torch_dtype="auto",
+                device_map="auto",
             )
         elif "qwen" in model_name.lower():
             model = AutoModelForCausalLM.from_pretrained(
@@ -186,18 +195,21 @@ def generate_demos(args):
             config = AutoConfig.from_pretrained(model_name)
             config.quantization_config["disable_exllama"] = True
             model = AutoModelForCausalLM.from_pretrained(
-                model_name, device_map="auto", config=config, token=HF_TOKEN
+                model_name,
+                device_map="auto",
+                config=config,
             )
         elif "gemma" in model_name.lower():
             model = Gemma3ForCausalLM.from_pretrained(
-                model_name, device_map="auto", token=HF_TOKEN
+                model_name,
+                device_map="auto",
             ).eval()
         else:
             raise ValueError(
                 "Unsupported model name {model_name}. Should be either Llama, Qwen, Gemma or Aya model."
             )
 
-        tokenizer = AutoTokenizer.from_pretrained(model_name, token=HF_TOKEN)
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
         tokenizer.pad_token_id = tokenizer.eos_token_id
         model.config.pad_token_id = tokenizer.pad_token_id
 
@@ -276,7 +288,7 @@ def generate_demos(args):
             pipeline = None
             terminators = []
 
-        while len(self_demonstrations_per_class) < num_samples_to_generate:
+        while len(self_demonstrations_per_class) < threshold_per_class:
             if not use_vllm:
                 outputs = pipeline(
                     prompt,
@@ -345,7 +357,6 @@ def generate_demos(args):
                             terminators,
                             use_vllm,
                             vllm_model,
-                            vllm_sampling_params,
                         )
                         if self_check_passed:
                             new_demonstrations.append(new_demo)
@@ -363,7 +374,7 @@ def generate_demos(args):
                 print("Failed decoding!", e)
                 continue
 
-        self_demonstrations_per_class = self_demonstrations_per_class[:num_samples_to_generate]
+        self_demonstrations_per_class = self_demonstrations_per_class[:threshold_per_class]
         self_demonstrations.extend(self_demonstrations_per_class)
         for i in range(len(self_demonstrations_per_class)):
             self_annotations.append(class_name)
@@ -371,13 +382,13 @@ def generate_demos(args):
         # with self-check we store both the "checked" and the originally generated samples with explanations
         if do_self_check:
             self_demonstrations_per_class_non_revised = self_demonstrations_per_class_non_revised[
-                :num_samples_to_generate
+                :threshold_per_class
             ]
             self_check_explanations_per_class = self_check_explanations_per_class[
-                :num_samples_to_generate
+                :threshold_per_class
             ]
             self_check_annotations_per_class = self_check_annotations_per_class[
-                :num_samples_to_generate
+                :threshold_per_class
             ]
             self_demonstrations_non_revised.extend(self_demonstrations_per_class_non_revised)
             self_check_explanations.extend(self_check_explanations_per_class)
@@ -396,6 +407,7 @@ def generate_demos(args):
 
     # write into file
     df = pd.DataFrame(data={"text": self_demonstrations, "intent": self_annotations})
+    Path(output_path).parent.absolute().mkdir(parents=True, exist_ok=True)
     df.to_csv(output_path, index=True, header=True)
 
     if do_self_check:
