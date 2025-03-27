@@ -312,7 +312,9 @@ def generate_demos(args):
                     elif '", "' in decoded:
                         decoded = decoded.split('", "')
 
-                decoded = [item.replace("'","").replace('"',"") for item in decoded if len(item) > 0]
+                decoded = [
+                    item.replace("'", "").replace('"', "") for item in decoded if len(item) > 0
+                ]
                 # skip the first one since it is typically "Here are x examples..."
                 if len(decoded) > 1:
                     decoded = decoded[1:]
