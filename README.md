@@ -27,3 +27,51 @@
 
 1. Benchmarking FreeAL approach in the multilingual setting with multiple labels and open-sourced models, identifying problems and proposing solutions for imbalanced class distribution and overlapping labels.
 2. Assessing the impact of sample selection strategies in the FreeAL setting, and experimenting with different ways of consistency regularization (e.g., using LLM-paraphrasing instead of backtranslation).
+
+## Generation setup
+1. **Settings:**
+    - only intent description with a summarized intent
+    - intent description with 10 demos per class in English (random selection)
+    - [optional] if revision helps, also try 10 demos per class in English (random selection) + revision
+    - intent description with 10 demos per class in the target language (random selection)
+    - intent description with 10 demos per class (random selection) + revision
+
+2. **Models:**
+
+   `google/gemma-3-4b-it`
+
+   `google/gemma-3-27b-it`
+
+   `TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ`
+
+   `TechxGenus/Meta-Llama-3-70B-Instruct-GPTQ` [optional]
+
+4. **Languages and Datasets:**
+
+   Datasets:
+       MASSIVE [(FitzGerald et al., 2023)](https://aclanthology.org/2023.acl-long.235/) and SIB-200 [(Adelani et al., 2024)](https://aclanthology.org/2024.eacl-long.14.pdf). See [`scripts/prepare_data.sh`](https://github.com/tanikina/multilingual-generation/blob/main/scripts/prepare_data.sh) for the script that extracts and prepares the data.
+
+   Languages:
+
+       mid-to-high-resourced: German, Thai, Hebrew, Indonesian, Swahili
+
+       low-resourced: Romanian, Azerbaijan, Slovenian, Telugu, Welsh  
+
+6. **Generation scripts for MASSIVE:**
+
+   [`scripts/massive10/gemma3_4b`](https://github.com/tanikina/multilingual-generation/tree/main/scripts/massive10/gemma3_4b)
+
+   [`scripts/massive10/gemma3_27b`](https://github.com/tanikina/multilingual-generation/tree/main/scripts/massive10/gemma3_27b)
+
+   [`scripts/massive10/llama3_8b`](https://github.com/tanikina/multilingual-generation/tree/main/scripts/massive10/llama3_8b)
+   
+8. **Estimated running time** for vllm vs pipeline approach:
+
+   tested the same generation strategies with `gemma3-4b-it` on RTX3090 (24GB)
+
+   **pipeline** approach (4 generation settings for German, 100 per class): 2h 11m
+
+   **vllm** (4 generation settings for German, 100 per class): 1h 18m
+
+**Important:** we use `pre-commit` to make sure that the code is formatted properly. Before pushing the changes to this repository, please run: `pre-commit run --all` to make sure that all checks pass. If changes are , please create a separate pull request.
+
