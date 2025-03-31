@@ -99,9 +99,9 @@ def self_check(
         )
 
         decoded = outputs[0]["generated_text"]
-        decoded = decoded[len(prompt) :].lower().replace("\n", " ").strip()
+        decoded = decoded[len(prompt) :].replace("\n", " ").strip()
 
-    if "yes" in decoded:
+    if "yes" in decoded.lower():
         return (True, decoded)
     else:
         return (False, decoded)
