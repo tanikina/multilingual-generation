@@ -1,0 +1,11 @@
+intent,description
+alarm_query,"This intent involves querying the system for information about scheduled alarms, including active alarms, specific alarm times, and alarms set for a given day or week."
+audio_volume_down,"This intent involves requesting a reduction in audio volume, including lowering speaker or media volume, decreasing sound levels by a specific amount, or making the system quieter."
+calendar_remove,"This intent involves requesting the deletion or cancellation of calendar events, including specific appointments, meetings, or all events for a given time period."
+cooking_recipe,"This intent involves requesting cooking-related information, including recipes, ingredient measurements, cooking times, temperatures, and step-by-step instructions for preparing various dishes."
+datetime_convert,"This intent involves converting time between different time zones, determining time differences, and adjusting or setting time zones based on user requests."
+email_sendemail,"This intent involves composing and sending emails to specified recipients, including dictating message content and specifying subjects or topics."
+play_audiobook,"This intent involves playing, resuming, or restarting an audiobook, including selecting specific titles or continuing from where the user left off."
+recommendation_movies,"This intent involves providing movie recommendations, showtimes, or details about films currently playing in a specific location or area."
+transport_ticket,"This intent involves booking, purchasing, or managing transport tickets, primarily for trains, including specifying details like destinations, dates, and preferences."
+weather_query,"This intent involves asking for weather information, including current conditions, forecasts, and specific weather events like rain or snow."
