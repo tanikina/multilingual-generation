@@ -420,8 +420,12 @@ def generate_demos(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Training parameters.")
     parser.add_argument("--language", type=str, choices=list(lang_name_map.keys()))
-    parser.add_argument("--input_path", type=str)
-    parser.add_argument("--output_path", type=str)
+    parser.add_argument("--input_path", type=str, default="data/de-massive/de-DE_train.csv")
+    parser.add_argument(
+        "--output_path",
+        type=str,
+        default="data/generated/massive10/llama5_8b/de-DE_default_output.csv",
+    )
 
     parser.add_argument("--dataset", type=str, default="massive10")
     parser.add_argument(
