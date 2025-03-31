@@ -296,7 +296,7 @@ def generate_demos(args):
                 model_kwargs={"torch_dtype": torch.bfloat16},
             )
 
-            max_new_tokens = 128
+            max_new_tokens = 512
 
             prompt = pipeline.tokenizer.apply_chat_template(
                 messages, tokenize=False, add_generation_prompt=True
