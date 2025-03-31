@@ -65,7 +65,7 @@ def generate_intent_descriptions(
             },
             {
                 "role": "user",
-                "content": f"Your task is to generate a short description of the intent {intent} based on the following examples from the dataset that share the intent {intent}: {examples} Description:",
+                "content": f"Your task is to generate a short description of the intent {intent} based on the following examples from the dataset that share the intent {intent}: {examples} Your description should always start with 'This intent involves'. Description:",
             },
         ]
         # print(messages)
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--input_path", type=str, default="data/en-massive/en-US_train.csv")
     parser.add_argument(
-        "--output_path", type=str, default="src/utils/intent2description_summarized.csv"
+        "--output_path", type=str, default="src/utils/intent2description_summarized_llama8b.csv"
     )
     parser.add_argument("--num_samples_per_intent", type=int, default=10)
     args = parser.parse_args()
