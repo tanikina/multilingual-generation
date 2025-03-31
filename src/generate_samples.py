@@ -243,10 +243,10 @@ def generate_demos(args):
 
     # loading the mapping between the intent labels and their explanations
     label2explanation = dict()
-    if use_simple_explanations:
+    if use_simple_explanations:  # (non-summarized, human-written descriptions)
         explanation_fname = "src/utils/intent2description.csv"
     else:
-        explanation_fname = "src/utils/intent2description_summarized.csv"
+        explanation_fname = args.summarized_explanation_fname
     df_explanations = pd.read_csv(explanation_fname)
     exp_labels = df_explanations["intent"].to_list()
     explanations = df_explanations["description"].to_list()
@@ -456,6 +456,11 @@ if __name__ == "__main__":
     parser.add_argument("--use_translated_demos", type=bool, default=False)
     parser.add_argument("--with_label_explanation", type=bool, default=False)
     parser.add_argument("--use_simple_explanations", type=bool, default=False)
+    parser.add_argument(
+        "--summarized_explanation_fname",
+        type=str,
+        default="src/utils/intent2description_summarized.csv",
+    )
     parser.add_argument("--do_self_check", type=bool, default=False)
     parser.add_argument("--use_vllm", type=bool, default=False)
     parser.add_argument("--verbose", type=bool, default=False)
