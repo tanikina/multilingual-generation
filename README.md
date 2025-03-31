@@ -63,6 +63,15 @@
 
 4. **Generation scripts for MASSIVE:**
 
+   Note: if you want to modify `intent2description`, e.g., using a different amount of examples, or a different model (by default the descriptions are generated with Llama-70b), you can run the following code:
+
+   ```
+       python src/utils/generate_summarized_intent_descriptions.py \
+       --model_name="TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ" \
+       --output_path="src/utils/intent2description_summarized_llama8b.csv" \
+       --num_samples_per_intent=10
+   ```
+
    [`scripts/massive10/gemma3_4b`](https://github.com/tanikina/multilingual-generation/tree/main/scripts/massive10/gemma3_4b)
 
    [`scripts/massive10/gemma3_27b`](https://github.com/tanikina/multilingual-generation/tree/main/scripts/massive10/gemma3_27b)
