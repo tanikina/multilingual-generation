@@ -80,12 +80,10 @@
 
 5. **Estimated running time** for vllm vs pipeline approach:
 
-   tested the same generation strategies with `gemma3-4b-it` on RTX3090 (24GB)
+   tested the same generation strategy with `gemma3-4b-it` (L40S with 48GB)
 
-   **pipeline** approach (4 generation settings for German, 100 per class): 2h 11m
+   **pipeline** approach (self-revision generation setting for German, 100 per class): 44:08 min
 
-   **vllm** (4 generation settings for German, 100 per class): 1h 18m
-
-   Note: this may not be accurate since we were using less `new_tokens` when generating text via pipeline. TODO: check running time after fixing the generation parameters!
+   **vllm** (self-revision generation settings for German, 100 per class): 23:30 min
 
 **Important:** we use `pre-commit` to make sure that the code is formatted properly. Before pushing the changes to this repository, please run: `pre-commit run --all` to make sure that all checks pass. If changes are minor, you can commit them to the main branch, otherwise, please create a separate pull request.
