@@ -86,4 +86,6 @@
 
    **vllm** (4 generation settings for German, 100 per class): 1h 18m
 
-**Important:** we use `pre-commit` to make sure that the code is formatted properly. Before pushing the changes to this repository, please run: `pre-commit run --all` to make sure that all checks pass. If changes are , please create a separate pull request.
+   Note: this may not be accurate since we were using less `new_tokens` when generating text via pipeline. TODO: check running time after fixing the generation parameters!
+
+**Important:** we use `pre-commit` to make sure that the code is formatted properly. Before pushing the changes to this repository, please run: `pre-commit run --all` to make sure that all checks pass. If changes are minor, you can commit them to the main branch, otherwise, please create a separate pull request.
