@@ -1,6 +1,7 @@
 import argparse
 import os
 import random
+import re
 import sys
 from os.path import abspath, basename, dirname, isfile
 from pathlib import Path
@@ -46,6 +47,8 @@ os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
 os.environ["HF_TOKEN"] = HF_TOKEN
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
+
+FIRST_NUMBER_PATTERN = r"^(\d+)(?:\.|\))\s"  # to match "1. text" or "1) text" generated outputs
 
 
 def self_check(
@@ -108,6 +111,14 @@ def valid_sample(demo):
     if len(demo) < 10 or len(demo) > 100:
         return False
     return True
+
+
+def remove_first_number(text):
+    match = re.match(FIRST_NUMBER_PATTERN, text)
+    if match:
+        return text[match.end() :]
+    else:
+        return text
 
 
 def generate_demos(args):
@@ -174,7 +185,9 @@ def generate_demos(args):
     if use_vllm:
         # setting up vllm generation
         vllm_model = LLM(
-            model=model_name, tensor_parallel_size=1, max_model_len=4096
+            model=model_name,
+            tensor_parallel_size=1,
+            max_model_len=4096,
         )  # use dtype="float16" if GPU has compute capacity < 8
         vllm_sampling_params = SamplingParams(
             temperature=0.4, top_p=0.9, repetition_penalty=1.2, max_tokens=512
@@ -333,12 +346,7 @@ def generate_demos(args):
                 if verbose:
                     print("DECODED:", decoded)
                 # removing numbering (e.g. "1. text")
-                demos_to_check = [
-                    item[item.index(" ") + 1 :]
-                    if item[0].replace(".", "").isdigit() and " " in item
-                    else item
-                    for item in decoded
-                ]
+                demos_to_check = [remove_first_number(item) for item in decoded]
 
                 demos_to_check = [demo.strip() for demo in demos_to_check if valid_sample(demo)]
 
