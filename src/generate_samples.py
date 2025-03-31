@@ -49,6 +49,7 @@ os.environ["HF_TOKEN"] = HF_TOKEN
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 FIRST_NUMBER_PATTERN = r"^(\d+)(?:\.|\))\s"  # to match "1. text" or "1) text" generated outputs
+QUOTES = ["‘", "’", "”", "“", '"', "'", "*"]
 
 
 def self_check(
@@ -111,6 +112,13 @@ def valid_sample(demo):
     if len(demo) < 10 or len(demo) > 100:
         return False
     return True
+
+
+def clean_up_quotes(text):
+    for quote in QUOTES:
+        if quote in text:
+            text = text.replace(quote, "")
+    return text
 
 
 def remove_first_number(text):
@@ -334,11 +342,7 @@ def generate_demos(args):
                         decoded = decoded.split('", "')
 
                 # cleaning up generated samples, removing quotes
-                decoded = [
-                    item.replace("'", "").replace('"', "").replace("*", "")
-                    for item in decoded
-                    if len(item) > 0
-                ]
+                decoded = [clean_up_quotes(item) for item in decoded if len(item) > 0]
                 # skip the first one since it is typically "Here are x examples..."
                 if len(decoded) > 1:
                     decoded = decoded[1:]
