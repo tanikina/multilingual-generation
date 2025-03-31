@@ -1,6 +1,7 @@
 import argparse
 import os
 import random
+import re
 import sys
 from os.path import abspath, basename, dirname, isfile
 from pathlib import Path
@@ -47,6 +48,9 @@ os.environ["HF_TOKEN"] = HF_TOKEN
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+FIRST_NUMBER_PATTERN = r"^(\d+)(?:\.|\))\s"  # to match "1. text" or "1) text" generated outputs
+QUOTES = ["‘", "’", "”", "“", "„", '"', "'", "*"]
+
 
 def self_check(
     new_demo,
@@ -57,6 +61,7 @@ def self_check(
     terminators,
     use_vllm,
     vllm_model,
+    max_new_tokens=64,
 ):
     messages = [
         {
@@ -71,14 +76,14 @@ def self_check(
 
     if use_vllm:
         self_check_sampling_params = SamplingParams(
-            temperature=0.1, top_p=0.95, repetition_penalty=1.2, max_tokens=248
+            temperature=0.4,
+            top_p=0.9,
+            repetition_penalty=1.2,
+            max_tokens=max_new_tokens,
         )
-        decoded_outputs = vllm_model.generate(
-            messages[0]["content"] + " " + messages[1]["content"], self_check_sampling_params
-        )
+        decoded_outputs = vllm_model.chat(messages, self_check_sampling_params)
         decoded = decoded_outputs[0].outputs[0].text  # use single prompt!
     else:
-        max_new_tokens = 64
 
         prompt = pipeline.tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
@@ -89,7 +94,7 @@ def self_check(
             max_new_tokens=max_new_tokens,
             eos_token_id=terminators,
             do_sample=True,
-            temperature=0.6,
+            temperature=0.4,
             top_p=0.9,
         )
 
@@ -107,6 +112,21 @@ def valid_sample(demo):
     if len(demo) < 10 or len(demo) > 100:
         return False
     return True
+
+
+def clean_up_quotes(text):
+    for quote in QUOTES:
+        if quote in text:
+            text = text.replace(quote, "")
+    return text
+
+
+def remove_first_number(text):
+    match = re.match(FIRST_NUMBER_PATTERN, text)
+    if match:
+        return text[match.end() :]
+    else:
+        return text
 
 
 def generate_demos(args):
@@ -169,10 +189,16 @@ def generate_demos(args):
 
     # Generation
 
+    # loading models and tokenizers
     if use_vllm:
-        vllm_model = LLM(model=model_name, tensor_parallel_size=1, max_model_len=4096)
+        # setting up vllm generation
+        vllm_model = LLM(
+            model=model_name,
+            tensor_parallel_size=1,
+            max_model_len=4096,
+        )  # use dtype="float16" if GPU has compute capacity < 8
         vllm_sampling_params = SamplingParams(
-            temperature=0.1, top_p=0.95, repetition_penalty=1.2, max_tokens=512
+            temperature=0.4, top_p=0.9, repetition_penalty=1.2, max_tokens=512
         )
     else:
         if "aya" in model_name.lower():
@@ -219,6 +245,7 @@ def generate_demos(args):
     self_check_explanations = []
     self_check_annotations = []
 
+    # loading the mapping between the intent labels and their explanations
     label2explanation = dict()
     if use_simple_explanations:
         explanation_fname = "src/utils/intent2description.csv"
@@ -230,6 +257,8 @@ def generate_demos(args):
     for label, explanation in zip(exp_labels, explanations):
         label2explanation[label] = explanation
 
+    # selecting random demonstrations per class
+    # and constructing the prompt
     for class_name in labels:
         class_demos = class2demos[class_name]
         random.shuffle(class_demos)
@@ -258,6 +287,7 @@ def generate_demos(args):
         self_check_explanations_per_class = []
         self_check_annotations_per_class = []
 
+        # setting up pipeline generation
         if not use_vllm:
             pipeline = transformers.pipeline(
                 "text-generation",
@@ -285,6 +315,7 @@ def generate_demos(args):
             pipeline = None
             terminators = []
 
+        # collecting generated samples for each class
         while len(self_demonstrations_per_class) < threshold_per_class:
             if not use_vllm:
                 outputs = pipeline(
@@ -292,21 +323,16 @@ def generate_demos(args):
                     max_new_tokens=max_new_tokens,
                     eos_token_id=terminators,
                     do_sample=True,
-                    temperature=0.6,
+                    temperature=0.4,
                     top_p=0.9,
                 )
 
                 decoded = outputs[0]["generated_text"][len(prompt) :]
             else:
-                decoded = (
-                    vllm_model.generate(
-                        messages[0]["content"] + " " + messages[1]["content"], vllm_sampling_params
-                    )[0]
-                    .outputs[0]
-                    .text
-                )
+                decoded = vllm_model.chat(messages, vllm_sampling_params)[0].outputs[0].text
 
             try:
+                # splitting generated text (vllm sometimes outputs a list instead of putting each sample on a new line)
                 if "\n" in decoded:
                     decoded = decoded.split("\n")
                 else:
@@ -315,32 +341,24 @@ def generate_demos(args):
                     elif '", "' in decoded:
                         decoded = decoded.split('", "')
 
-                decoded = [
-                    item.replace("'", "").replace('"', "") for item in decoded if len(item) > 0
-                ]
+                # cleaning up generated samples, removing quotes
+                decoded = [clean_up_quotes(item) for item in decoded if len(item) > 0]
                 # skip the first one since it is typically "Here are x examples..."
                 if len(decoded) > 1:
                     decoded = decoded[1:]
 
                 if verbose:
                     print("DECODED:", decoded)
-                demos_to_check = [
-                    item[item.index(" ") + 1 :]
-                    if item[0].replace(".", "").isdigit() and " " in item
-                    else item
-                    for item in decoded
-                ]
+                # removing numbering (e.g. "1. text")
+                demos_to_check = [remove_first_number(item) for item in decoded]
 
-                demos_to_check = [
-                    demo.replace("*", "").replace('"', "").replace("'", "")
-                    for demo in demos_to_check
-                    if valid_sample(demo)
-                ]
+                demos_to_check = [demo.strip() for demo in demos_to_check if valid_sample(demo)]
 
                 # the last entry is often truncated, thus we skip it
                 if len(set(demos_to_check)) > 1:
                     demos_to_check = list(set(demos_to_check[:-1]))
 
+                # revising generated samples
                 if do_self_check:
                     new_demonstrations = []
                     for new_demo in demos_to_check:
@@ -363,7 +381,7 @@ def generate_demos(args):
                 else:
                     new_demonstrations = demos_to_check
                 self_demonstrations_per_class.extend(new_demonstrations)
-                # add non-revised demonstrations to keep the same samples
+                # adding non-revised demonstrations to a different list
                 if do_self_check:
                     self_demonstrations_per_class_non_revised.extend(demos_to_check)
             except Exception as e:
@@ -423,8 +441,12 @@ def generate_demos(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Training parameters.")
     parser.add_argument("--language", type=str, choices=list(lang_name_map.keys()))
-    parser.add_argument("--input_path", type=str)
-    parser.add_argument("--output_path", type=str)
+    parser.add_argument("--input_path", type=str, default="data/de-massive/de-DE_train.csv")
+    parser.add_argument(
+        "--output_path",
+        type=str,
+        default="data/generated/massive10/llama5_8b/de-DE_default_output.csv",
+    )
 
     parser.add_argument("--dataset", type=str, default="massive10")
     parser.add_argument(
