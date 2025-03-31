@@ -201,16 +201,12 @@ def generate_demos(args):
             temperature=0.4, top_p=0.9, repetition_penalty=1.2, max_tokens=512
         )
     else:
-        if "aya" in model_name.lower():
+        if "aya" in model_name.lower() or "qwen" in model_name.lower():
             model = AutoModelForCausalLM.from_pretrained(
                 model_name,
                 torch_dtype="auto",
                 device_map="auto",
-            )
-        elif "qwen" in model_name.lower():
-            model = AutoModelForCausalLM.from_pretrained(
-                model_name, device_map="auto", token=HF_TOKEN
-            )
+            ).eval()
         elif "llama" in model_name.lower():
             config = AutoConfig.from_pretrained(model_name)
             config.quantization_config["disable_exllama"] = True
@@ -218,7 +214,7 @@ def generate_demos(args):
                 model_name,
                 device_map="auto",
                 config=config,
-            )
+            ).eval()
         elif "gemma" in model_name.lower():
             model = AutoModelForCausalLM.from_pretrained(
                 model_name,
@@ -445,7 +441,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_path",
         type=str,
-        default="data/generated/massive10/llama5_8b/de-DE_default_output.csv",
+        default="data/generated/massive10/llama3_8b/de-DE_default_output.csv",
     )
 
     parser.add_argument("--dataset", type=str, default="massive10")
