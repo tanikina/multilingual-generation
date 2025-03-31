@@ -57,6 +57,7 @@ def self_check(
     terminators,
     use_vllm,
     vllm_model,
+    max_new_tokens=64,
 ):
     messages = [
         {
@@ -71,14 +72,14 @@ def self_check(
 
     if use_vllm:
         self_check_sampling_params = SamplingParams(
-            temperature=0.1, top_p=0.95, repetition_penalty=1.2, max_tokens=248
+            temperature=0.4,
+            top_p=0.9,
+            repetition_penalty=1.2,
+            max_tokens=max_new_tokens,
         )
-        decoded_outputs = vllm_model.generate(
-            messages[0]["content"] + " " + messages[1]["content"], self_check_sampling_params
-        )
+        decoded_outputs = vllm_model.chat(messages, self_check_sampling_params)
         decoded = decoded_outputs[0].outputs[0].text  # use single prompt!
     else:
-        max_new_tokens = 64
 
         prompt = pipeline.tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
@@ -89,7 +90,7 @@ def self_check(
             max_new_tokens=max_new_tokens,
             eos_token_id=terminators,
             do_sample=True,
-            temperature=0.6,
+            temperature=0.4,
             top_p=0.9,
         )
 
@@ -170,9 +171,11 @@ def generate_demos(args):
     # Generation
 
     if use_vllm:
-        vllm_model = LLM(model=model_name, tensor_parallel_size=1, max_model_len=4096)
+        vllm_model = LLM(
+            model=model_name, tensor_parallel_size=1, max_model_len=4096
+        )  # use dtype="float16" if GPU has compute capacity < 8
         vllm_sampling_params = SamplingParams(
-            temperature=0.1, top_p=0.95, repetition_penalty=1.2, max_tokens=512
+            temperature=0.4, top_p=0.9, repetition_penalty=1.2, max_tokens=512
         )
     else:
         if "aya" in model_name.lower():
@@ -292,19 +295,13 @@ def generate_demos(args):
                     max_new_tokens=max_new_tokens,
                     eos_token_id=terminators,
                     do_sample=True,
-                    temperature=0.6,
+                    temperature=0.4,
                     top_p=0.9,
                 )
 
                 decoded = outputs[0]["generated_text"][len(prompt) :]
             else:
-                decoded = (
-                    vllm_model.generate(
-                        messages[0]["content"] + " " + messages[1]["content"], vllm_sampling_params
-                    )[0]
-                    .outputs[0]
-                    .text
-                )
+                decoded = vllm_model.chat(messages, vllm_sampling_params)[0].outputs[0].text
 
             try:
                 if "\n" in decoded:
@@ -332,7 +329,7 @@ def generate_demos(args):
                 ]
 
                 demos_to_check = [
-                    demo.replace("*", "").replace('"', "").replace("'", "")
+                    demo.replace("*", "").replace('"', "").replace("'", "").strip()
                     for demo in demos_to_check
                     if valid_sample(demo)
                 ]
