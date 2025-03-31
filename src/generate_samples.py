@@ -49,7 +49,7 @@ os.environ["HF_TOKEN"] = HF_TOKEN
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 FIRST_NUMBER_PATTERN = r"^(\d+)(?:\.|\))\s"  # to match "1. text" or "1) text" generated outputs
-QUOTES = ["‘", "’", "”", "“", '"', "'", "*"]
+QUOTES = ["‘", "’", "”", "“", "„", '"', "'", "*"]
 
 
 def self_check(
