@@ -352,7 +352,7 @@ def generate_demos(args):
 
                 # the last entry is often truncated, thus we skip it
                 if len(set(demos_to_check)) > 1:
-                    demos_to_check = list(set(demos_to_check[:-1]))
+                    demos_to_check = demos_to_check[:-1]
 
                 # revising generated samples
                 if do_self_check:
@@ -384,7 +384,9 @@ def generate_demos(args):
                 print("Failed decoding!", e)
                 continue
 
-        self_demonstrations_per_class = self_demonstrations_per_class[:threshold_per_class]
+        self_demonstrations_per_class = list(set(self_demonstrations_per_class))[
+            :threshold_per_class
+        ]
         self_demonstrations.extend(self_demonstrations_per_class)
         for i in range(len(self_demonstrations_per_class)):
             self_annotations.append(class_name)
