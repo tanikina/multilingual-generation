@@ -220,6 +220,7 @@ def main(args):
 
     num_labels = args.num_labels  # e.g. 10 for MASSIVE
     max_per_class = args.max_per_class  # 100
+    balanced = args.balanced  # True
 
     lang = args.lang  # "de-DE"
     lang_prefix = lang.split("-")[0]
@@ -253,6 +254,7 @@ def main(args):
         lang=lang,
         num_labels=num_labels,
         max_per_class=max_per_class,
+        balanced=balanced,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(base_model_name)
@@ -316,6 +318,7 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", type=float, default=2e-5)
     parser.add_argument("--max_per_class", type=int, default=100)
     parser.add_argument("--num_labels", type=int, default=10)
+    parser.add_argument("--balanced", action="store_true")
     parser.add_argument("--base_model_name", type=str, default="FacebookAI/xlm-roberta-base")
     parser.add_argument("--finetuned_model_name", type=str, default="model")
     parser.add_argument("--lang", type=str, default="de-DE")
