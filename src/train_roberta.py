@@ -8,6 +8,8 @@ from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix, f1_score
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+from string import punctuation
+
 import torch.nn as nn
 from datasets import Dataset
 from torch.optim import AdamW
@@ -48,6 +50,15 @@ def balance_data(texts, labels, max_per_class):
     return new_texts, new_labels
 
 
+def normalize_text(input_texts):
+    normalized_texts = []
+    for input_text in input_texts:
+        normalized_text = input_text.lower()
+        normalized_text = "".join([ch for ch in normalized_text if ch not in punctuation])
+        normalized_texts.append(normalized_text)
+    return normalized_texts
+
+
 def create_data(
     train_data_path,
     val_data_path,
@@ -58,14 +69,19 @@ def create_data(
     max_per_class=100,
     val_proportion=0.10,
     balanced=True,
+    normalized=True,
 ):
     # we do not modify the test data distribution
     test_df = pd.read_csv(test_data_path)
     test_texts = list(test_df["text"])
+    if normalized:
+        test_texts = normalize_text(test_texts)
     test_labels = [intent_labels.index(lbl) for lbl in list(test_df["intent"])]
 
     train_df = pd.read_csv(train_data_path)
     train_texts = list(train_df["text"])
+    if normalized:
+        train_texts = normalize_text(train_texts)
     train_labels = [intent_labels.index(lbl) for lbl in list(train_df["intent"])]
     if balanced:
         train_texts, train_labels = balance_data(train_texts, train_labels, max_per_class)
@@ -73,9 +89,13 @@ def create_data(
     if len(val_data_path) > 0:
         val_df = pd.read_csv(val_data_path)
         val_texts = list(val_df["text"])
+        if normalized:
+            val_texts = normalize_text(val_texts)
         val_labels = [intent_labels.index(lbl) for lbl in list(val_df["intent"])]
     else:  # empty string, no validation set provided
         train_val_texts = list(train_df["text"])
+        if normalized:
+            train_val_texts = normalize_text(train_val_texts)
         train_val_labels = [intent_labels.index(lbl) for lbl in list(train_df["intent"])]
         if balanced:
             train_val_texts, train_val_labels = balance_data(
@@ -221,6 +241,7 @@ def main(args):
     num_labels = args.num_labels  # e.g. 10 for MASSIVE
     max_per_class = args.max_per_class  # 100
     balanced = args.balanced  # True
+    normalized = args.normalized  # True
 
     lang = args.lang  # "de-DE"
     lang_prefix = lang.split("-")[0]
@@ -255,6 +276,7 @@ def main(args):
         num_labels=num_labels,
         max_per_class=max_per_class,
         balanced=balanced,
+        normalized=normalized,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(base_model_name)
@@ -318,6 +340,7 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", type=float, default=2e-5)
     parser.add_argument("--max_per_class", type=int, default=100)
     parser.add_argument("--num_labels", type=int, default=10)
+    parser.add_argument("--normalized", action="store_true")  # remove punctuation, lowercase
     parser.add_argument("--balanced", action="store_true")
     parser.add_argument("--base_model_name", type=str, default="FacebookAI/xlm-roberta-base")
     parser.add_argument("--finetuned_model_name", type=str, default="model")
