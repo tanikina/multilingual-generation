@@ -202,10 +202,10 @@ def evaluate(model, tokenizer, test_loader, test_set, intent_labels, id2label, s
     # print(pd.crosstab([id2label[item] for item in expected_list], [id2label[item] for item in predictions_list], rownames=["True"], colnames=["Predicted"], margins=True))
     print("Setting: " + setting)
     print(
-        f"Test loss: {total_loss/len(test_loader)}\nTest acc: {round(total_acc/len(test_set)*100, 2)}%"
+        f"Test loss: {round(total_loss/len(test_loader),5)}\nTest acc: {round(total_acc/len(test_set)*100, 2)}%"
     )
     f1 = f1_score(expected_list, predictions_list, average="macro")
-    print("F1 score:", round(f1 * 100, 2))
+    print(f"F1 score: {round(f1 * 100, 2)}%")
 
 
 def main(args):
