@@ -2,7 +2,7 @@
 echo only_summarized_intent
 python src/generate_samples.py \
 --language=az-AZ \
---input_path=data/de-massive/az-AZ_train.csv \
+--input_path=data/az-massive/az-AZ_train.csv \
 --output_path=data/generated/massive10/gemma3_4b/az-AZ_only_summarized_intent.csv \
 --dataset=massive10 \
 --model_name=google/gemma-3-4b-it \
@@ -13,7 +13,7 @@ python src/generate_samples.py \
 echo summarized_intent_with_10_target_lang_demos
 python src/generate_samples.py \
 --language=az-AZ \
---input_path=data/de-massive/az-AZ_train.csv \
+--input_path=data/az-massive/az-AZ_train.csv \
 --output_path=data/generated/massive10/gemma3_4b/az-AZ_summarized_intent_with_10_target_lang_demos.csv \
 --dataset=massive10 \
 --model_name=google/gemma-3-4b-it \
@@ -24,7 +24,7 @@ python src/generate_samples.py \
 echo summarized_intent_with_10_english_demos
 python src/generate_samples.py \
 --language=az-AZ \
---input_path=data/de-massive/az-AZ_train.csv \
+--input_path=data/az-massive/az-AZ_train.csv \
 --output_path=data/generated/massive10/gemma3_4b/az-AZ_summarized_intent_with_10_english_demos.csv \
 --dataset=massive10 \
 --model_name=google/gemma-3-4b-it \
@@ -36,7 +36,7 @@ python src/generate_samples.py \
 echo summarized_intent_with_10_target_lang_demos_and_revision
 python src/generate_samples.py \
 --language=az-AZ \
---input_path=data/de-massive/az-AZ_train.csv \
+--input_path=data/az-massive/az-AZ_train.csv \
 --output_path=data/generated/massive10/gemma3_4b/az-AZ_summarized_intent_with_10_target_lang_demos_and_revision.csv \
 --dataset=massive10 \
 --model_name=google/gemma-3-4b-it \

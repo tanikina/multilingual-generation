@@ -2,7 +2,7 @@
 echo only_summarized_intent
 python src/generate_samples.py \
 --language=en-US \
---input_path=data/de-massive/en-US_train.csv \
+--input_path=data/en-massive/en-US_train.csv \
 --output_path=data/generated/massive10/llama3_8b/en-US_only_summarized_intent.csv \
 --dataset=massive10 \
 --model_name=TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ \
@@ -13,7 +13,7 @@ python src/generate_samples.py \
 echo summarized_intent_with_10_target_lang_demos
 python src/generate_samples.py \
 --language=en-US \
---input_path=data/de-massive/en-US_train.csv \
+--input_path=data/en-massive/en-US_train.csv \
 --output_path=data/generated/massive10/llama3_8b/en-US_summarized_intent_with_10_target_lang_demos.csv \
 --dataset=massive10 \
 --model_name=TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ \
@@ -24,7 +24,7 @@ python src/generate_samples.py \
 echo summarized_intent_with_10_english_demos
 python src/generate_samples.py \
 --language=en-US \
---input_path=data/de-massive/en-US_train.csv \
+--input_path=data/en-massive/en-US_train.csv \
 --output_path=data/generated/massive10/llama3_8b/en-US_summarized_intent_with_10_english_demos.csv \
 --dataset=massive10 \
 --model_name=TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ \
@@ -36,7 +36,7 @@ python src/generate_samples.py \
 echo summarized_intent_with_10_target_lang_demos_and_revision
 python src/generate_samples.py \
 --language=en-US \
---input_path=data/de-massive/en-US_train.csv \
+--input_path=data/en-massive/en-US_train.csv \
 --output_path=data/generated/massive10/llama3_8b/en-US_summarized_intent_with_10_target_lang_demos_and_revision.csv \
 --dataset=massive10 \
 --model_name=TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ \
