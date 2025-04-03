@@ -337,7 +337,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=5)
     parser.add_argument("--num_epochs", type=int, default=50)
     parser.add_argument("--batch_size", type=int, default=16)
-    parser.add_argument("--learning_rate", type=float, default=2e-5)
+    parser.add_argument("--learning_rate", type=float, default=1e-5)
     parser.add_argument("--max_per_class", type=int, default=100)
     parser.add_argument("--num_labels", type=int, default=10)
     parser.add_argument("--normalized", action="store_true")  # remove punctuation, lowercase
