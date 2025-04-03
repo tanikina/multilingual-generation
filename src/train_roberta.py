@@ -1,6 +1,8 @@
 import argparse
 import os
 import random
+from os.path import isfile
+from pathlib import Path
 
 import pandas as pd
 import torch
@@ -171,7 +173,18 @@ def train(model, model_name, optimizer, train_loader, dev_loader, criterion, num
                 return
 
 
-def evaluate(model, tokenizer, test_loader, test_set, intent_labels, id2label, setting, language):
+def evaluate(
+    model,
+    tokenizer,
+    test_loader,
+    test_set,
+    intent_labels,
+    id2label,
+    setting,
+    language,
+    eval_results_file,
+    seed,
+):
     model.eval()
     total_loss = 0
     total_acc = 0
@@ -221,16 +234,26 @@ def evaluate(model, tokenizer, test_loader, test_set, intent_labels, id2label, s
 
     # print(pd.crosstab([id2label[item] for item in expected_list], [id2label[item] for item in predictions_list], rownames=["True"], colnames=["Predicted"], margins=True))
     print("Setting: " + setting)
-    print(
-        f"Test loss: {round(total_loss/len(test_loader),5)}\nTest acc: {round(total_acc/len(test_set)*100, 2)}%"
-    )
+    acc = round(total_acc / len(test_set) * 100, 2)
+    print(f"Test loss: {round(total_loss/len(test_loader),5)}\nTest acc: {acc}%")
     f1 = f1_score(expected_list, predictions_list, average="macro")
-    print(f"F1 score: {round(f1 * 100, 2)}%")
+    f1 = round(f1 * 100, 2)
+    print(f"F1 score: {f1}%")
+
+    # saving evaluation results into file
+    if isfile(eval_results_file):
+        header = False
+    else:
+        header = True
+    Path(eval_results_file).parent.absolute().mkdir(parents=True, exist_ok=True)
+    df = pd.DataFrame(data={"setting": [setting], "seed": [seed], "f1": [f1], "accuracy": [acc]})
+    df.to_csv(eval_results_file, mode="a", header=header, index=False)
 
 
 def main(args):
-    torch.manual_seed(args.seed)
-    random.seed(args.seed)
+    seed = args.seed
+    torch.manual_seed(seed)
+    random.seed(seed)
 
     num_epochs = args.num_epochs  # 50
     batch_size = args.batch_size  # 16
@@ -248,6 +271,7 @@ def main(args):
     train_data_path = args.train_data_path
     test_data_path = args.test_data_path
     val_data_path = args.val_data_path
+    eval_results_file = args.eval_results_file
 
     if args.dataset == "massive10":
         intent_labels = MASSIVE10_LABELS
@@ -329,6 +353,8 @@ def main(args):
         id2label=id2label,
         setting=train_data_path,
         language=lang_prefix,
+        eval_results_file=eval_results_file,
+        seed=seed,
     )
 
 
@@ -351,6 +377,9 @@ if __name__ == "__main__":
     parser.add_argument("--train_data_path", type=str, default="data/de-massive/de-DE_train.csv")
     parser.add_argument("--test_data_path", type=str, default="data/de-massive/de-DE_test.csv")
     parser.add_argument("--val_data_path", type=str, default="")
+    parser.add_argument(
+        "--eval_results_file", type=str, default="results/massive10/de_summary.csv"
+    )
     args = parser.parse_args()
     print(args)
     main(args)
