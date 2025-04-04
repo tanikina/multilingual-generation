@@ -335,13 +335,14 @@ def main(args):
     dev_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_set, batch_size=batch_size)
 
+    os.makedirs("saved_models", exist_ok=True)
+
     train(model, finetuned_model_name, optimizer, train_loader, dev_loader, criterion, num_epochs)
 
     model = AutoModelForSequenceClassification.from_pretrained(
         base_model_name, num_labels=num_labels
     )
 
-    os.makedirs("saved_models", exist_ok=True)
     model.load_state_dict(torch.load("saved_models/" + finetuned_model_name + ".pt"))
     model.to(device)
     evaluate(
