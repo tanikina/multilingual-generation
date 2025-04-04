@@ -86,4 +86,18 @@
 
    **vllm** (self-revision generation settings for German, 100 per class): 23:30 min
 
-**Important:** we use `pre-commit` to make sure that the code is formatted properly. Before pushing the changes to this repository, please run: `pre-commit run --all` to make sure that all checks pass. If changes are minor, you can commit them to the main branch, otherwise, please create a separate pull request.
+## Evaluation setup
+
+The scripts to run the evaluation with `FacebookAI/xlm-roberta-base` can be found in `scripts/downstream_evaluation`. For each setting we fine-tune the model with 10 different seeds, computing F1 and accuracy scores. The results are stored in the `results/{dataset_name}/{model_name}` directory. E.g., the results for gemma3-4b on the MASSIVE data for German will be in `results/massive10/gemma3_4b/de_results.csv`.
+
+[`scripts/downstream_evaluation/massive10/gemma3_4b`](https://github.com/tanikina/multilingual-generation/tree/main/scripts/downstream_evaluation/massive10/gemma3_4b)
+
+[`scripts/downstream_evaluation/massive10/gemma3_27b`](https://github.com/tanikina/multilingual-generation/tree/main/scripts/downstream_evaluation/massive10/gemma3_27b)
+
+[`scripts/downstream_evaluation/massive10/llama3_8b`](https://github.com/tanikina/multilingual-generation/tree/main/scripts/downstream_evaluation/massive10/llama3_8b)
+
+We also store one confusion matrix per setting in the `figures` directory (the matrix is generated for each run, but since all the runs in the same setting have the same path, the matrix will be overwritten by the subsequent runs, so in practice we always have the confusion matrix corresponding to the last seed).
+
+## Important
+
+We use `pre-commit` to make sure that the code is formatted properly. Before pushing the changes to this repository, please run: `pre-commit run --all` to make sure that all checks pass. If changes are minor, you can commit them to the main branch, otherwise, please create a separate pull request.
