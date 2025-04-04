@@ -14,9 +14,9 @@ for seed in ${seeds[@]}; do
     --dataset="massive10" \
     --balanced \
     --normalized \
-    --train_data_path="data/generated/massive10/gemma3_4b/id-ID_only_summarized_intent.csv" \
+    --train_data_path="data/generated/massive10/llama3_70b/id-ID_only_summarized_intent.csv" \
     --test_data_path="data/id-massive/id-ID_test.csv" \
-    --eval_results_file="results/massive10/gemma3_4b/id_results.csv"
+    --eval_results_file="results/massive10/llama3_70b/id_results.csv"
 done
 for seed in ${seeds[@]}; do
     python src/train_roberta.py \
@@ -32,9 +32,9 @@ for seed in ${seeds[@]}; do
     --dataset="massive10" \
     --balanced \
     --normalized \
-    --train_data_path="data/generated/massive10/gemma3_4b/id-ID_summarized_intent_with_10_target_lang_demos.csv" \
+    --train_data_path="data/generated/massive10/llama3_70b/id-ID_summarized_intent_with_10_target_lang_demos.csv" \
     --test_data_path="data/id-massive/id-ID_test.csv" \
-    --eval_results_file="results/massive10/gemma3_4b/id_results.csv"
+    --eval_results_file="results/massive10/llama3_70b/id_results.csv"
 done
 for seed in ${seeds[@]}; do
     python src/train_roberta.py \
@@ -50,9 +50,9 @@ for seed in ${seeds[@]}; do
     --dataset="massive10" \
     --balanced \
     --normalized \
-    --train_data_path="data/generated/massive10/gemma3_4b/id-ID_summarized_intent_with_10_english_demos.csv" \
+    --train_data_path="data/generated/massive10/llama3_70b/id-ID_summarized_intent_with_10_english_demos.csv" \
     --test_data_path="data/id-massive/id-ID_test.csv" \
-    --eval_results_file="results/massive10/gemma3_4b/id_results.csv"
+    --eval_results_file="results/massive10/llama3_70b/id_results.csv"
 done
 for seed in ${seeds[@]}; do
     python src/train_roberta.py \
@@ -68,7 +68,7 @@ for seed in ${seeds[@]}; do
     --dataset="massive10" \
     --balanced \
     --normalized \
-    --train_data_path="data/generated/massive10/gemma3_4b/id-ID_summarized_intent_with_10_target_lang_demos_and_revision.csv" \
+    --train_data_path="data/generated/massive10/llama3_70b/id-ID_summarized_intent_with_10_target_lang_demos_and_revision.csv" \
     --test_data_path="data/id-massive/id-ID_test.csv" \
-    --eval_results_file="results/massive10/gemma3_4b/id_results.csv"
+    --eval_results_file="results/massive10/llama3_70b/id_results.csv"
 done
