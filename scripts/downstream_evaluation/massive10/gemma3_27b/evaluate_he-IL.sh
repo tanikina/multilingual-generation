@@ -16,7 +16,7 @@ for seed in ${seeds[@]}; do
     --normalized \
     --train_data_path="data/he-massive/he-IL_train.csv" \
     --test_data_path="data/he-massive/he-IL_test.csv" \
-    --eval_results_file="results/massive10/he_results.csv"
+    --eval_results_file="results/massive10/gemma3_27b/he_results.csv"
 done
 for seed in ${seeds[@]}; do
     python src/train_roberta.py \
@@ -34,7 +34,7 @@ for seed in ${seeds[@]}; do
     --normalized \
     --train_data_path="data/generated/massive10/gemma3_27b/he-IL_only_summarized_intent.csv" \
     --test_data_path="data/he-massive/he-IL_test.csv" \
-    --eval_results_file="results/massive10/he_results.csv"
+    --eval_results_file="results/massive10/gemma3_27b/he_results.csv"
 done
 for seed in ${seeds[@]}; do
     python src/train_roberta.py \
@@ -52,7 +52,7 @@ for seed in ${seeds[@]}; do
     --normalized \
     --train_data_path="data/generated/massive10/gemma3_27b/he-IL_summarized_intent_with_10_target_lang_demos.csv" \
     --test_data_path="data/he-massive/he-IL_test.csv" \
-    --eval_results_file="results/massive10/he_results.csv"
+    --eval_results_file="results/massive10/gemma3_27b/he_results.csv"
 done
 for seed in ${seeds[@]}; do
     python src/train_roberta.py \
@@ -70,7 +70,7 @@ for seed in ${seeds[@]}; do
     --normalized \
     --train_data_path="data/generated/massive10/gemma3_27b/he-IL_summarized_intent_with_10_english_demos.csv" \
     --test_data_path="data/he-massive/he-IL_test.csv" \
-    --eval_results_file="results/massive10/he_results.csv"
+    --eval_results_file="results/massive10/gemma3_27b/he_results.csv"
 done
 for seed in ${seeds[@]}; do
     python src/train_roberta.py \
@@ -88,5 +88,5 @@ for seed in ${seeds[@]}; do
     --normalized \
     --train_data_path="data/generated/massive10/gemma3_27b/he-IL_summarized_intent_with_10_target_lang_demos_and_revision.csv" \
     --test_data_path="data/he-massive/he-IL_test.csv" \
-    --eval_results_file="results/massive10/he_results.csv"
+    --eval_results_file="results/massive10/gemma3_27b/he_results.csv"
 done
