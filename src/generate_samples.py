@@ -137,7 +137,7 @@ def generate_demos(args):
         labels = MASSIVE10_LABELS
     elif args.dataset == "massive60":
         labels = MASSIVE60_LABELS
-    elif args.dataset == "sib-200":
+    elif args.dataset == "sib200":
         labels = SIB200_LABELS
     else:
         raise ValueError(f"Unknown dataset {args.dataset}")
