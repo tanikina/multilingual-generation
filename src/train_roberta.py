@@ -277,7 +277,7 @@ def main(args):
         intent_labels = MASSIVE10_LABELS
     elif args.dataset == "massive60":
         intent_labels = MASSIVE60_LABELS
-    elif args.dataset == "sib-200":
+    elif args.dataset == "sib200":
         intent_labels = SIB200_LABELS
     else:
         raise ValueError(f"Unknown dataset {args.dataset}")
