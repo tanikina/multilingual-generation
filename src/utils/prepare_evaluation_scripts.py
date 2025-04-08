@@ -23,6 +23,44 @@ all_settings = [
 ]
 
 
+def create_baseline_script(dataset, dataset_base):
+    out_str = "#!/bin/bash\nseeds=(1 2 3 4 5 6 7 8 9 10)\n"
+
+    for lang in all_languages:
+        lang_prefix = lang.split("-")[0]
+        fixed_template = """for seed in ${seeds[@]}; do
+    python src/train_roberta.py \\
+    --seed=$seed \\
+    --num_epochs=50 \\
+    --batch_size=16 \\
+    --learning_rate=1e-5 \\
+    --max_per_class=100 \\
+    --num_labels=10 \\
+    --base_model_name="FacebookAI/xlm-roberta-base" \\
+    --balanced \\
+    --normalized \\\n"""
+        out_str += fixed_template
+
+        finetuned_model_name = lang_prefix + "_baseline_model"
+        train_data_path = "data/" + lang_prefix + "-" + dataset + "/" + lang + "_train.csv"
+        test_data_path = "data/" + lang_prefix + "-" + dataset_base + "/" + lang + "_test.csv"
+        eval_results_file = "results/" + dataset + "/baseline/" + lang_prefix + "_results.csv"
+
+        flexible_template = (
+            f'    --finetuned_model_name="{finetuned_model_name}" \\\n'
+            f'    --lang="{lang}" \\\n'
+            f'    --dataset="{dataset}" \\\n'
+            f'    --train_data_path="{train_data_path}" \\\n'
+            f'    --test_data_path="{test_data_path}" \\\n'
+            f'    --eval_results_file="{eval_results_file}" \n'
+            "done\n"
+        )
+
+        out_str += flexible_template
+
+    return out_str
+
+
 def main():
     for dataset in all_datasets:
         # dataset = "massive10"
@@ -30,6 +68,14 @@ def main():
             dataset_base = "massive"
         else:
             dataset_base = dataset
+
+        baseline_out_path = (
+            f"scripts/downstream_evaluation/{dataset}/baselines/evaluate_on_gold_all_languages.sh"
+        )
+        baseline_str = create_baseline_script(dataset, dataset_base)
+        Path(baseline_out_path).parent.absolute().mkdir(parents=True, exist_ok=True)
+        with open(baseline_out_path, "w") as f:
+            f.write(baseline_str)
 
         for gen_model_name in all_gen_models:
             # gen_model_name = "gemma3_4b"
