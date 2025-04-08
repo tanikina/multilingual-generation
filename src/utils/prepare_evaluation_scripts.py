@@ -41,7 +41,7 @@ def create_baseline_script(dataset, dataset_base):
     --normalized \\\n"""
         out_str += fixed_template
 
-        finetuned_model_name = lang_prefix + "_baseline_model"
+        finetuned_model_name = lang_prefix + f"_baseline_model_{dataset}"
         train_data_path = "data/" + lang_prefix + "-" + dataset + "/" + lang + "_train.csv"
         test_data_path = "data/" + lang_prefix + "-" + dataset_base + "/" + lang + "_test.csv"
         eval_results_file = "results/" + dataset + "/baseline/" + lang_prefix + "_results.csv"
@@ -104,7 +104,9 @@ def main():
     --normalized \\\n"""
                     out_str += fixed_template
 
-                    finetuned_model_name = lang_prefix + "_" + setting + "_model_" + gen_model_name
+                    finetuned_model_name = (
+                        lang_prefix + "_" + setting + "_model_" + gen_model_name + "_" + dataset
+                    )
                     train_data_path = (
                         "data/generated/"
                         + dataset
