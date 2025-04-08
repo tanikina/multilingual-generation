@@ -23,7 +23,7 @@ all_settings = [
 ]
 
 
-def create_baseline_script(dataset, dataset_base):
+def create_baseline_script(dataset, dataset_base, num_labels):
     out_str = "#!/bin/bash\nseeds=(1 2 3 4 5 6 7 8 9 10)\n"
 
     for lang in all_languages:
@@ -35,7 +35,6 @@ def create_baseline_script(dataset, dataset_base):
     --batch_size=16 \\
     --learning_rate=1e-5 \\
     --max_per_class=100 \\
-    --num_labels=10 \\
     --base_model_name="FacebookAI/xlm-roberta-base" \\
     --balanced \\
     --normalized \\\n"""
@@ -49,6 +48,7 @@ def create_baseline_script(dataset, dataset_base):
         flexible_template = (
             f'    --finetuned_model_name="{finetuned_model_name}" \\\n'
             f'    --lang="{lang}" \\\n'
+            f"    --num_labels={num_labels} \\\n"
             f'    --dataset="{dataset}" \\\n'
             f'    --train_data_path="{train_data_path}" \\\n'
             f'    --test_data_path="{test_data_path}" \\\n'
@@ -66,13 +66,20 @@ def main():
         # dataset = "massive10"
         if dataset.startswith("massive"):
             dataset_base = "massive"
-        else:
+            if dataset == "massive10":
+                num_labels = "10"
+            else:
+                num_labels = "60"
+        elif dataset == "sib200":
             dataset_base = dataset
+            num_labels = "7"
+        else:
+            raise ValueError(f"Unknown dataset: {dataset}. Can be either massive10 or sib200.")
 
         baseline_out_path = (
             f"scripts/downstream_evaluation/{dataset}/baselines/evaluate_on_gold_all_languages.sh"
         )
-        baseline_str = create_baseline_script(dataset, dataset_base)
+        baseline_str = create_baseline_script(dataset, dataset_base, num_labels)
         Path(baseline_out_path).parent.absolute().mkdir(parents=True, exist_ok=True)
         with open(baseline_out_path, "w") as f:
             f.write(baseline_str)
@@ -98,7 +105,6 @@ def main():
     --batch_size=16 \\
     --learning_rate=1e-5 \\
     --max_per_class=100 \\
-    --num_labels=10 \\
     --base_model_name="FacebookAI/xlm-roberta-base" \\
     --balanced \\
     --normalized \\\n"""
@@ -134,6 +140,7 @@ def main():
                     flexible_template = (
                         f'    --finetuned_model_name="{finetuned_model_name}" \\\n'
                         f'    --lang="{lang}" \\\n'
+                        f"    --num_labels={num_labels} \\\n"
                         f'    --dataset="{dataset}" \\\n'
                         f'    --train_data_path="{train_data_path}" \\\n'
                         f'    --test_data_path="{test_data_path}" \\\n'
