@@ -4,19 +4,21 @@ import os
 import numpy as np
 import pandas as pd
 
-VALID_SETTINGS = [
+BASELINE_SETTINGS = ["gold"]
+GENERATION_SETTINGS = [
     "summarized_intent",
     "english_demos",
     "target_lang_demos",
     "target_lang_demos_and_revision",
 ]
+ALL_SETTINGS = BASELINE_SETTINGS + GENERATION_SETTINGS
 
 LANG_ORDER = ["az", "cy", "de", "en", "he", "id", "ro", "sl", "sw", "te", "th"]
 
 
-def collect_statistics(input_dir_path, metric):
-    lang2avg_scores = dict()
-    lang2std = dict()
+def process_results(input_dir_path, lang2avg_scores, lang2std, metric="f1", is_baseline=False):
+    # if not os.path.isfile(input_dir_path):
+    #    raise ValueError(f"Invalid path to the file: {input_dir_path}")
     for fname in os.listdir(input_dir_path):
         df = pd.read_csv(os.path.join(input_dir_path, fname))
         settings = list(df["setting"])
@@ -26,15 +28,18 @@ def collect_statistics(input_dir_path, metric):
             scores = list(df["accuracy"])
 
         lang = fname.split("_")[0]
-        lang2avg_scores[lang] = dict()
-        lang2std[lang] = dict()
-        for setting in VALID_SETTINGS:
-            lang2avg_scores[lang][setting] = 0.0
-            lang2std[lang][setting] = 0.0
+        if lang not in lang2avg_scores:
+            lang2avg_scores[lang] = dict()
+            lang2std[lang] = dict()
+            for setting in ALL_SETTINGS:
+                lang2avg_scores[lang][setting] = 0.0
+                lang2std[lang][setting] = 0.0
 
         setting2score = dict()
         for setting, score in zip(settings, scores):
-            if "only_summarized_intent" in setting:
+            if is_baseline:
+                setting = "gold"
+            elif "only_summarized_intent" in setting:
                 setting = "summarized_intent"
             elif "english_demos" in setting:
                 setting = "english_demos"
@@ -50,13 +55,31 @@ def collect_statistics(input_dir_path, metric):
 
             setting2score[setting].append(float(score))
 
-        for setting in VALID_SETTINGS:
+        if is_baseline:
+            settings_to_check = BASELINE_SETTINGS
+        else:
+            settings_to_check = GENERATION_SETTINGS
+        for setting in settings_to_check:
             if setting not in setting2score:
                 raise ValueError(f"Setting {setting} is missing in the file {fname}!")
             else:
                 scores_per_setting = setting2score[setting]
                 lang2avg_scores[lang][setting] = round(np.mean(scores_per_setting), 3)
                 lang2std[lang][setting] = round(np.std(scores_per_setting), 5)
+
+
+def collect_statistics(input_dir_path, metric):
+    lang2avg_scores = dict()
+    lang2std = dict()
+    # collecting baseline results with the gold data
+    baseline_dir = os.path.join("/".join(input_dir_path.split("/")[:-2]), "baseline")
+
+    # collecting results with the generated data, if baseline is not available, we skip it
+    try:
+        process_results(baseline_dir, lang2avg_scores, lang2std, metric, is_baseline=True)
+    except Exception as e:
+        print(e)
+    process_results(input_dir_path, lang2avg_scores, lang2std, metric, is_baseline=False)
 
     df_avg_scores = pd.DataFrame.from_dict(lang2avg_scores)
     df_avg_scores = df_avg_scores.reindex(columns=LANG_ORDER)
