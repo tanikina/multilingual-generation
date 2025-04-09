@@ -84,7 +84,8 @@ repos:
           - --skip=logs/**,data/**,*.ipynb,tests/fixtures/**
           # ignore
           #  - "hist": this is a plotext function
-          - --ignore-words-list=hist
+          #  - "te": this is a language abbreviation for Telugu
+          - --ignore-words-list=hist,te
 
   # jupyter notebook cell output clearing
   - repo: https://github.com/kynan/nbstripout
