@@ -72,7 +72,7 @@ def collect_statistics(input_dir_path, metric):
     lang2avg_scores = dict()
     lang2std = dict()
     # collecting baseline results with the gold data
-    baseline_dir = os.path.join("/".join(input_dir_path.split("/")[:-2]), "baseline")
+    baseline_dir = os.path.join("/".join(input_dir_path.split("/")[:2]), "baseline")
 
     # collecting results with the generated data, if baseline is not available, we skip it
     try:
