@@ -7,6 +7,7 @@ vllm
 scikit-learn
 matplotlib
 jsonlines
+tabulate
 datasets
 pandas
 numpy
