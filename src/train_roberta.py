@@ -18,7 +18,12 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-from class_labels import MASSIVE10_LABELS, MASSIVE60_LABELS, SIB200_LABELS
+from class_labels import (
+    MASSIVE10_LABELS,
+    MASSIVE60_LABELS,
+    SENTIMENT_LABELS,
+    SIB200_LABELS,
+)
 
 
 def write_into_file(texts, labels, fname):
@@ -279,6 +284,8 @@ def main(args):
         intent_labels = MASSIVE60_LABELS
     elif args.dataset == "sib200":
         intent_labels = SIB200_LABELS
+    elif args.dataset == "sentiment":
+        intent_labels = SENTIMENT_LABELS
     else:
         raise ValueError(f"Unknown dataset {args.dataset}")
 
@@ -373,7 +380,10 @@ if __name__ == "__main__":
     parser.add_argument("--finetuned_model_name", type=str, default="model")
     parser.add_argument("--lang", type=str, default="de-DE")
     parser.add_argument(
-        "--dataset", type=str, default="massive10", choices=["massive10", "massive60", "sib200"]
+        "--dataset",
+        type=str,
+        default="massive10",
+        choices=["massive10", "massive60", "sib200", "sentiment"],
     )
     parser.add_argument("--train_data_path", type=str, default="data/de-massive/de-DE_train.csv")
     parser.add_argument("--test_data_path", type=str, default="data/de-massive/de-DE_test.csv")
