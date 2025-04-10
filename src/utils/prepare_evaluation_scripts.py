@@ -13,7 +13,7 @@ all_languages = [
     "te-IN",
     "cy-GB",
 ]
-all_datasets = ["massive10", "sib200"]
+all_datasets = ["massive10", "sib200", "sentiment"]
 all_gen_models = ["gemma3_4b", "gemma3_27b", "llama3_8b", "llama3_70b"]
 all_settings = [
     "only_summarized_intent",
@@ -73,8 +73,13 @@ def main():
         elif dataset == "sib200":
             dataset_base = dataset
             num_labels = "7"
+        elif dataset == "sentiment":
+            dataset_base = dataset
+            num_labels = "2"
         else:
-            raise ValueError(f"Unknown dataset: {dataset}. Can be either massive10 or sib200.")
+            raise ValueError(
+                f"Unknown dataset: {dataset}. Can be either massive10, sentiment or sib200."
+            )
 
         baseline_out_path = (
             f"scripts/downstream_evaluation/{dataset}/baselines/evaluate_on_gold_all_languages.sh"
