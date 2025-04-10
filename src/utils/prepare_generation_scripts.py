@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 
 all_languages = [
@@ -13,18 +14,12 @@ all_languages = [
     "te-IN",
     "cy-GB",
 ]
-all_datasets = ["massive10", "sib200", "sentiment"]
-all_gen_models = ["gemma3_4b", "gemma3_27b", "llama3_8b", "llama3_70b"]
-all_settings = [
-    "only_summarized_intent",
-    "summarized_intent_with_10_target_lang_demos",
-    "summarized_intent_with_10_english_demos",
-    "summarized_intent_with_10_target_lang_demos_and_revision",
-]
+ALL_DATASETS = ["massive10", "sib200", "sentiment"]
+ALL_GEN_MODELS = ["gemma3_4b", "gemma3_27b", "llama3_8b", "llama3_70b"]
 
 
-def main():
-    for dataset in all_datasets:
+def prepare_scripts(datasets, gen_models):
+    for dataset in datasets:
         # dataset = "massive10"
         if dataset.startswith("massive"):
             summarized_explanation_fname = "src/utils/intent2description_summarized.csv"
@@ -37,7 +32,7 @@ def main():
                 f"Unknown dataset: {dataset}. Can be either massive10, sentiment or sib200."
             )
 
-        for gen_model_name in all_gen_models:
+        for gen_model_name in gen_models:
             if gen_model_name == "gemma3_4b":
                 full_gen_model_name = "google/gemma-3-4b-it"
             elif gen_model_name == "gemma3_27b":
@@ -113,4 +108,26 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Parameters for preparing the generation scripts."
+    )
+    parser.add_argument("--datasets", nargs="+", default=["sentiment"])
+    parser.add_argument("--gen_models", nargs="+", default=["gemma3_4b"])
+    parser.add_argument("--all", action="store_true")
+    args = parser.parse_args()
+    if args.all:
+        datasets = ALL_DATASETS
+        gen_models = ALL_GEN_MODELS
+    else:
+        datasets = args.datasets
+        gen_models = args.gen_models
+
+    for dataset in datasets:
+        assert dataset in ALL_DATASETS
+    for model in gen_models:
+        assert model in ALL_GEN_MODELS
+
+    print(f"Preparing the scripts for the following datasets: {datasets}")
+    print(f"Preparing the scripts for the following models: {gen_models}")
+
+    prepare_scripts(datasets, gen_models)
