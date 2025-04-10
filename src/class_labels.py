@@ -83,3 +83,5 @@ SIB200_LABELS = [
     "entertainment",
     "geography",
 ]
+
+SENTIMENT_LABELS = ["positive", "negative"]

@@ -16,7 +16,12 @@ sys.path.append(parent)
 import transformers
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
-from class_labels import MASSIVE10_LABELS, MASSIVE60_LABELS, SIB200_LABELS
+from class_labels import (
+    MASSIVE10_LABELS,
+    MASSIVE60_LABELS,
+    SENTIMENT_LABELS,
+    SIB200_LABELS,
+)
 
 random.seed(2024)
 
@@ -139,6 +144,8 @@ def generate_demos(args):
         labels = MASSIVE60_LABELS
     elif args.dataset == "sib200":
         labels = SIB200_LABELS
+    elif args.dataset == "sentiment":
+        labels = SENTIMENT_LABELS
     else:
         raise ValueError(f"Unknown dataset {args.dataset}")
 
