@@ -151,6 +151,20 @@ LANG_SIB200 = [
     "cym_Latn",
 ]  # note: this list is not exhaustive, see https://github.com/dadelani/sib-200/tree/main
 
+LANG_SENTIMENT = [
+    "English_sentiment",
+    "German_sentiment",
+    "thai_sa",
+    "hebrew_sa",
+    "indonesian_sa",
+    "swahili_sa",
+    "romanian_sa",
+    "azerbaijani_sa",
+    "slovenian_sa",
+    "telugu_sa",
+    "welsh_sa",
+]
+
 INTENT_SIB200 = [
     "science/technology",
     "travel",
@@ -160,6 +174,8 @@ INTENT_SIB200 = [
     "entertainment",
     "geography",
 ]
+
+INTENT_SENTIMENT = ["negative", "positive"]
 
 # we map SIB-200 language codes to the language codes of MASSIVE for consistency
 sib200_to_massive_lang_name = {
@@ -174,4 +190,18 @@ sib200_to_massive_lang_name = {
     "slv_Latn": "sl-SL",
     "tel_Telu": "te-IN",
     "cym_Latn": "cy-GB",
+}
+
+sentiment_to_massive_lang_name = {
+    "English_sentiment": "en-US",
+    "German_sentiment": "de-DE",
+    "thai_sa": "th-TH",
+    "hebrew_sa": "he-IL",
+    "indonesian_sa": "id-ID",
+    "swahili_sa": "sw-KE",
+    "romanian_sa": "ro-RO",
+    "azerbaijani_sa": "az-AZ",
+    "slovenian_sa": "sl-SL",
+    "telugu_sa": "te-IN",
+    "welsh_sa": "cy-GB",
 }
