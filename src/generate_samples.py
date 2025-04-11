@@ -273,7 +273,26 @@ def generate_demos(args):
         else:
             added_explanation = ""
         if len(examples) > 0:
-            self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {lang_name} that can have the label: {class_name} {added_explanation} Note that some examples from the dataset look as follows:\nExamples:\n{examples}\nNow generate {num_samples_to_generate} similar examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name} and do not repeat the instruction.\nGenerated examples for label {class_name}:\n"
+            # truncate each example to max 128 tokens
+            examples = [" ".join(example.split()[:128]) for example in examples]
+            # check that the prompt length does not exceed max model length
+            prompt_length_check_success = False
+            while not prompt_length_check_success:
+                self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {lang_name} that can have the label: {class_name} {added_explanation} Note that some examples from the dataset look as follows:\nExamples:\n{examples}\nNow generate {num_samples_to_generate} similar examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name} and do not repeat the instruction.\nGenerated examples for label {class_name}:\n"
+                if use_vllm:
+                    prompt_length_check_success = len(
+                        vllm_model.get_tokenizer().encode(self_generation_prompt)
+                    ) < (
+                        vllm_model.llm_engine.vllm_config.model_config.max_model_len - 100
+                    )  # 100 is the margin for the system prompt
+                else:
+                    prompt_length_check_success = len(tokenizer.encode(self_generation_prompt)) < (
+                        model.config.max_position_embeddings - 100
+                    )  # 100 is the margin for the system prompt, see https://stackoverflow.com/questions/76547541/huggingface-how-do-i-find-the-max-length-of-a-model#77286207
+                if not prompt_length_check_success:
+                    examples = examples[
+                        :-1
+                    ]  # reduce the number of examples until the valid length is reached
         else:
             self_generation_prompt = f"You are required to produce {num_samples_to_generate} examples in {lang_name} that can have the label: {class_name} {added_explanation}. Generate {num_samples_to_generate} examples for the label {class_name}. Each example should be on a new line. Do not generate anything that cannot be classified as {class_name} and do not repeat the instruction.\nGenerated examples for label {class_name}:\n"
 
@@ -444,7 +463,7 @@ def generate_demos(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Training parameters.")
+    parser = argparse.ArgumentParser(description="Generation parameters.")
     parser.add_argument("--language", type=str, choices=list(lang_name_map.keys()))
     parser.add_argument("--input_path", type=str, default="data/de-massive/de-DE_train.csv")
     parser.add_argument(
