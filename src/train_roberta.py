@@ -33,6 +33,19 @@ def write_into_file(texts, labels, fname):
             f.write(text + "\t" + str(label) + "\n")
 
 
+def remove_invalid_samples(in_texts, in_labels):
+    # since the gold data sometimes has only punctuation and no text
+    # (e.g. https://huggingface.co/datasets/DGurgurov/romanian_sa/viewer/default/test?p=2&row=223)
+    # we remove such cases from training/evaluation
+    out_texts = []
+    out_labels = []
+    for txt, lbl in zip(in_texts, in_labels):
+        if len(txt) > 0:
+            out_texts.append(txt)
+            out_labels.append(lbl)
+    return out_texts, out_labels
+
+
 def balance_data(texts, labels, max_per_class):
     new_texts_with_labels = []
     label2texts = dict()
@@ -84,12 +97,14 @@ def create_data(
     if normalized:
         test_texts = normalize_text(test_texts)
     test_labels = [intent_labels.index(lbl) for lbl in list(test_df["intent"])]
+    test_texts, test_labels = remove_invalid_samples(test_texts, test_labels)
 
     train_df = pd.read_csv(train_data_path)
     train_texts = list(train_df["text"])
     if normalized:
         train_texts = normalize_text(train_texts)
     train_labels = [intent_labels.index(lbl) for lbl in list(train_df["intent"])]
+    train_texts, train_labels = remove_invalid_samples(train_texts, train_labels)
     if balanced:
         train_texts, train_labels = balance_data(train_texts, train_labels, max_per_class)
 
