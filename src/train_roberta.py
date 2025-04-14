@@ -18,7 +18,12 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-from class_labels import MASSIVE10_LABELS, MASSIVE60_LABELS, SIB200_LABELS
+from class_labels import (
+    MASSIVE10_LABELS,
+    MASSIVE60_LABELS,
+    SENTIMENT_LABELS,
+    SIB200_LABELS,
+)
 
 
 def write_into_file(texts, labels, fname):
@@ -26,6 +31,19 @@ def write_into_file(texts, labels, fname):
         f.write("text\tlabels\n")
         for text, label in zip(texts, labels):
             f.write(text + "\t" + str(label) + "\n")
+
+
+def remove_invalid_samples(in_texts, in_labels):
+    # since the gold data sometimes has only punctuation and no text
+    # (e.g. https://huggingface.co/datasets/DGurgurov/romanian_sa/viewer/default/test?p=2&row=223)
+    # we remove such cases from training/evaluation
+    out_texts = []
+    out_labels = []
+    for txt, lbl in zip(in_texts, in_labels):
+        if len(txt) > 0:
+            out_texts.append(txt)
+            out_labels.append(lbl)
+    return out_texts, out_labels
 
 
 def balance_data(texts, labels, max_per_class):
@@ -79,12 +97,14 @@ def create_data(
     if normalized:
         test_texts = normalize_text(test_texts)
     test_labels = [intent_labels.index(lbl) for lbl in list(test_df["intent"])]
+    test_texts, test_labels = remove_invalid_samples(test_texts, test_labels)
 
     train_df = pd.read_csv(train_data_path)
     train_texts = list(train_df["text"])
     if normalized:
         train_texts = normalize_text(train_texts)
     train_labels = [intent_labels.index(lbl) for lbl in list(train_df["intent"])]
+    train_texts, train_labels = remove_invalid_samples(train_texts, train_labels)
     if balanced:
         train_texts, train_labels = balance_data(train_texts, train_labels, max_per_class)
 
@@ -279,6 +299,8 @@ def main(args):
         intent_labels = MASSIVE60_LABELS
     elif args.dataset == "sib200":
         intent_labels = SIB200_LABELS
+    elif args.dataset == "sentiment":
+        intent_labels = SENTIMENT_LABELS
     else:
         raise ValueError(f"Unknown dataset {args.dataset}")
 
@@ -373,7 +395,10 @@ if __name__ == "__main__":
     parser.add_argument("--finetuned_model_name", type=str, default="model")
     parser.add_argument("--lang", type=str, default="de-DE")
     parser.add_argument(
-        "--dataset", type=str, default="massive10", choices=["massive10", "massive60", "sib200"]
+        "--dataset",
+        type=str,
+        default="massive10",
+        choices=["massive10", "massive60", "sib200", "sentiment"],
     )
     parser.add_argument("--train_data_path", type=str, default="data/de-massive/de-DE_train.csv")
     parser.add_argument("--test_data_path", type=str, default="data/de-massive/de-DE_test.csv")
