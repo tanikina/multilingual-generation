@@ -9,6 +9,7 @@ GENERATION_SETTINGS = [
     "summarized_intent",
     "english_demos",
     "target_lang_demos",
+    "no_summarized_intent_target_lang_demos",
     "target_lang_demos_and_revision",
 ]
 ALL_SETTINGS = BASELINE_SETTINGS + GENERATION_SETTINGS
@@ -41,6 +42,8 @@ def process_results(input_dir_path, lang2avg_scores, lang2std, metric="f1", is_b
                 setting = "gold"
             elif "only_summarized_intent" in setting:
                 setting = "summarized_intent"
+            elif "no_summarized_intent" in setting:
+                setting = "no_summarized_intent_target_lang_demos"
             elif "english_demos" in setting:
                 setting = "english_demos"
             elif "target_lang_demos_and_revision" in setting:
