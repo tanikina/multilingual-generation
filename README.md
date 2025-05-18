@@ -2,7 +2,6 @@
 
 ![low_resources_synthetic_methodology2](https://github.com/user-attachments/assets/8f2420a3-a10a-4b0b-9d31-61abc051d965)
 
-
 ## Motivation
 
 Large Language Models (LLMs) are increasingly used to generate synthetic textual data for training smaller specialized models. However, a comparison of various generation strategies for low-resource language settings is lacking.  While various prompting strategies have been proposed—such as demonstrations, label-based summaries, and self-revision—their comparative effectiveness remains unclear, especially for low-resource languages.
