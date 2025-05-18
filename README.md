@@ -1,6 +1,7 @@
-# A Rigorous Evaluation of Data Generation Strategies<br> for Low-Resource Languages
+# A Rigorous Evaluation of Data Generation Strategies for Low-Resource Languages
 
 ![low_resources_synthetic_methodology2](https://github.com/user-attachments/assets/8f2420a3-a10a-4b0b-9d31-61abc051d965)
+
 
 ## Motivation
 
@@ -31,13 +32,13 @@ Our results show that strategic combinations of generation methods—particularl
 
 2. **Models:**
 
-   `google/gemma-3-4b-it`
+   [`google/gemma-3-4b-it`](https://huggingface.co/google/gemma-3-4b-it)
 
-   `google/gemma-3-27b-it`
+   [`google/gemma-3-27b-it`](https://huggingface.co/google/gemma-3-27b-it)
 
-   `TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ`
+   [`TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ`](https://huggingface.co/TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ)
 
-   `TechxGenus/Meta-Llama-3-70B-Instruct-GPTQ`
+   [`TechxGenus/Meta-Llama-3-70B-Instruct-GPTQ`](https://huggingface.co/TechxGenus/Meta-Llama-3-70B-Instruct-GPTQ)
 
 3. **Languages and Datasets:**
 
@@ -47,7 +48,7 @@ Our results show that strategic combinations of generation methods—particularl
    Languages:
 
    ```
-   mid-to-high-resourced: German, Thai, Hebrew, Indonesian, Swahili
+   mid-to-high-resourced: Thai, Hebrew, Indonesian, Swahili, German, English
 
    low-resourced: Romanian, Azerbaijan, Slovenian, Telugu, Welsh
    ```
