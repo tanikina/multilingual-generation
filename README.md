@@ -1,42 +1,33 @@
-# Multilingual generation
+# A Rigorous Evaluation of Data Generation Strategies<br> for Low-Resource Languages
+
+![low_resources_synthetic_methodology2](https://github.com/user-attachments/assets/8f2420a3-a10a-4b0b-9d31-61abc051d965)
 
 ## Motivation
 
-[Xiao et al. (2023)](https://aclanthology.org/2023.emnlp-main.896/) proposed an approach to leverage large (LLM) and small (SLM) language models to iteratively annotate the data from the unlabeled pool without any involvement of human annotators. However, the first step requires the creation of demonstrations "from scratch" which is feasible with large pre-trained models like ChatGPT given a small amount of distinct labels for simple categories (e.g., positive vs negative movie reviews). In this work, we are investigating whether this approach can scale to different languages, multiple labels and whether we can leverage open-sourced language models for the generation tasks.
+Large Language Models (LLMs) are increasingly used to generate synthetic textual data for training smaller specialized models. However, a comparison of various generation strategies for low-resource language settings is lacking.  While various prompting strategies have been proposed—such as demonstrations, label-based summaries, and self-revision—their comparative effectiveness remains unclear, especially for low-resource languages.
 
-### Research Questions 1 (Data Generation):
+In this project, we systematically evaluate the performance of these generation strategies and their combinations across 11 typologically diverse languages, including several extremely low-resource ones. Using three NLP tasks and four open-source LLMs, we assess downstream model performance on generated versus gold-standard data.
 
-1. What are the best ways to generate samples "from scratch" **in a multilingual setting**? Which prompt strategies work the best and to what extent we need gold demonstrations and unlabeled data in the target language?
-2. Which **filtering and selection methods** work well with the generated data? E.g., coreset-based selection vs. cartography etc.
-3. Can we improve downstream performance by combining generated data with paraphrased demonstrations? Is it beneficial to **combine traditional data augmentation methods with generation**?
-4. How can we **measure the quality of generated data** and what metrics are most beneficial for finding "good quality" samples.
+Our results show that strategic combinations of generation methods—particularly target-language demonstrations with LLM-based revisions—yield strong performance, **narrowing the gap with real data to as little as 5% in some settings**. We also find that smart prompting techniques can reduce the **advantage of larger LLMs**, highlighting efficient generation strategies for synthetic data generation in low-resource scenarios with smaller models.
 
-### Contributions 1 (Data Generation):
+### Contributions:
 
-1. A comprehensive analysis of different sample generation and selection strategies for multiple languages.
-2. Benchmarking several SOTA models of different sizes on the dataset generation task.
-3. Exploring different way of assessing data quality, finding outliers and noise in the data.
-
-### Research Questions 2 (FreeAL):
-
-1. Does FreeAL setting generalize to **different languages and multiple labels**?
-2. To what extent can we **replace the available gold and silver data** with generated samples?
-3. How can we mitigate the **effects of unbalanced distribution** that is crucial for good sample selection with FreeAL?
-
-### Contributions 2 (FreeAL):
-
-1. Benchmarking FreeAL approach in the multilingual setting with multiple labels and open-sourced models, identifying problems and proposing solutions for imbalanced class distribution and overlapping labels.
-2. Assessing the impact of sample selection strategies in the FreeAL setting, and experimenting with different ways of consistency regularization (e.g., using LLM-paraphrasing instead of backtranslation).
+1. We provide an exhaustive evaluation of different common strategies for **generating synthetic data for low-resource languages** and formulate suggestions for the most effective combination of strategies for extreme low-resource settings.
+2. We confirm that while models with a higher number of parameters outperform their smaller counterparts on the generation task in the low-resource setting, **the gap in performance is small** when a right generation technique is used.
+3. We show that - using the right combination of techniques, and for some configurations - **the drop of performance for a model trained on LLM-generated data is as small as up to only 5%** absolute when compared to the same number of "real" data.
+4. We show that a **combination of demonstrations in the target language with LLM-based revisions** generally leads to the best performance across most languages, especially in extremely low-resource settings.
 
 ## Generation setup
 
-1. **Settings:**
+1. **Generation Strategies:**
 
-   - only intent description with a summarized intent
-   - intent description with 10 demos per class in English (random selection)
-   - \[optional\] if revision helps, also try 10 demos per class in English (random selection) + revision
-   - intent description with 10 demos per class in the target language (random selection)
-   - intent description with 10 demos per class (random selection) + revision
+   - Summarized Label (SL)
+   - EnglishDemos + SL
+   - EnglishDemos + Revision
+   - TargetDemos
+   - TargetDemos + SL
+   - TargetDemos + Revision
+   - TargetDemos + SL + Revision
 
 2. **Models:**
 
@@ -46,12 +37,12 @@
 
    `TechxGenus/Meta-Llama-3-8B-Instruct-GPTQ`
 
-   `TechxGenus/Meta-Llama-3-70B-Instruct-GPTQ` \[optional\]
+   `TechxGenus/Meta-Llama-3-70B-Instruct-GPTQ`
 
 3. **Languages and Datasets:**
 
    Datasets:
-   MASSIVE [(FitzGerald et al., 2023)](https://aclanthology.org/2023.acl-long.235/) and SIB-200 [(Adelani et al., 2024)](https://aclanthology.org/2024.eacl-long.14.pdf). See [`scripts/prepare_data.sh`](https://github.com/tanikina/multilingual-generation/blob/main/scripts/prepare_data.sh) for the script that extracts and prepares the data.
+   MASSIVE [(FitzGerald et al., 2023)](https://aclanthology.org/2023.acl-long.235/) and SIB-200 [(Adelani et al., 2024)](https://aclanthology.org/2024.eacl-long.14.pdf). See [`scripts/prepare_data.sh`](https://github.com/tanikina/multilingual-generation/blob/main/scripts/prepare_data.sh) for the script that extracts and prepares the data. For the sentiment task we use the data from [(Gurgurov et al., 2024)](https://aclanthology.org/2024.kallm-1.7/), [(Gurgurov et al., 2025)](https://aclanthology.org/2025.findings-naacl.67/), and [(Mollanorozy et al., 2023)](https://aclanthology.org/2023.sigtyp-1.9/).
 
    Languages:
 
